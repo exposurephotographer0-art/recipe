@@ -472,46 +472,11 @@
 
     <!-- Search + Filters -->
     <div style="margin-bottom:14px">
-      <input type="text" placeholder="Search recipes…" id="recipe-search" oninput="applyRecipeFilters()" style="max-width:340px">
+      <input type="text" placeholder="Search recipes, category or country…" id="recipe-search" oninput="applyRecipeFilters()" style="max-width:380px">
     </div>
     <div class="recipe-filters" id="recipe-filters">
       <!-- Cost -->
       <button class="filter-chip" data-filter="cost" data-value="under5" onclick="toggleFilter(this)">💵 Under $5</button>
-      <div class="filter-divider"></div>
-      <!-- Country -->
-      <select id="country-filter" onchange="applyCountryFilter(this.value)" style="background:var(--surface2);border:1px solid var(--border);color:var(--text-muted);padding:5px 10px;border-radius:20px;font-size:0.75px;font-family:'DM Sans',sans-serif;font-size:0.75rem;cursor:pointer;outline:none;transition:border-color 0.15s;height:32px">
-        <option value="">🌍 All Countries</option>
-        <option value="Argentina">🇦🇷 Argentina</option>
-        <option value="Austria">🇦🇹 Austria</option>
-        <option value="Brazil">🇧🇷 Brazil</option>
-        <option value="China">🇨🇳 China</option>
-        <option value="Egypt">🇪🇬 Egypt</option>
-        <option value="Ethiopia">🇪🇹 Ethiopia</option>
-        <option value="France">🇫🇷 France</option>
-        <option value="Germany">🇩🇪 Germany</option>
-        <option value="Greece">🇬🇷 Greece</option>
-        <option value="India">🇮🇳 India</option>
-        <option value="Indonesia">🇮🇩 Indonesia</option>
-        <option value="Iran">🇮🇷 Iran</option>
-        <option value="Italy">🇮🇹 Italy</option>
-        <option value="Japan">🇯🇵 Japan</option>
-        <option value="Korea">🇰🇷 Korea</option>
-        <option value="Lebanon">🇱🇧 Lebanon</option>
-        <option value="Mexico">🇲🇽 Mexico</option>
-        <option value="Morocco">🇲🇦 Morocco</option>
-        <option value="Nigeria">🇳🇬 Nigeria</option>
-        <option value="Peru">🇵🇪 Peru</option>
-        <option value="Poland">🇵🇱 Poland</option>
-        <option value="Portugal">🇵🇹 Portugal</option>
-        <option value="Russia">🇷🇺 Russia</option>
-        <option value="South Africa">🇿🇦 South Africa</option>
-        <option value="Spain">🇪🇸 Spain</option>
-        <option value="Thailand">🇹🇭 Thailand</option>
-        <option value="Turkey">🇹🇷 Turkey</option>
-        <option value="Ukraine">🇺🇦 Ukraine</option>
-        <option value="USA">🇺🇸 USA</option>
-        <option value="Vietnam">🇻🇳 Vietnam</option>
-      </select>
       <div class="filter-divider"></div>
       <!-- Cuisine category -->
       <button class="filter-chip" data-filter="cuisine" data-value="Pasta" onclick="toggleFilter(this)">🍝 Pasta</button>
@@ -636,20 +601,30 @@
       </div>
       <div class="form-group">
         <label>Country of Origin</label>
-        <select id="rec-country">
-          <option value="">— None —</option>
-          <option>Argentina</option><option>Austria</option><option>Brazil</option>
-          <option>China</option><option>Egypt</option><option>Ethiopia</option>
-          <option>France</option><option>Germany</option><option>Greece</option>
-          <option>India</option><option>Indonesia</option><option>Iran</option>
-          <option>Italy</option><option>Japan</option><option>Korea</option>
-          <option>Lebanon</option><option>Mexico</option><option>Morocco</option>
-          <option>Nigeria</option><option>Peru</option><option>Poland</option>
-          <option>Portugal</option><option>Russia</option><option>South Africa</option>
-          <option>Spain</option><option>Thailand</option><option>Turkey</option>
-          <option>Ukraine</option><option>USA</option><option>Vietnam</option>
-          <option>Other</option>
-        </select>
+        <input type="text" id="rec-country" list="country-suggestions" placeholder="e.g. Italy, Japan, Mexico…" autocomplete="off">
+        <datalist id="country-suggestions">
+          <option>Argentina</option><option>Australia</option><option>Austria</option>
+          <option>Belgium</option><option>Brazil</option><option>Cambodia</option>
+          <option>Canada</option><option>Chile</option><option>China</option>
+          <option>Colombia</option><option>Cuba</option><option>Egypt</option>
+          <option>Ethiopia</option><option>France</option><option>Georgia</option>
+          <option>Germany</option><option>Ghana</option><option>Greece</option>
+          <option>Hungary</option><option>India</option><option>Indonesia</option>
+          <option>Iran</option><option>Iraq</option><option>Israel</option>
+          <option>Italy</option><option>Jamaica</option><option>Japan</option>
+          <option>Jordan</option><option>Kenya</option><option>Korea</option>
+          <option>Laos</option><option>Lebanon</option><option>Malaysia</option>
+          <option>Mexico</option><option>Morocco</option><option>Myanmar</option>
+          <option>Nepal</option><option>Netherlands</option><option>Nigeria</option>
+          <option>Pakistan</option><option>Peru</option><option>Philippines</option>
+          <option>Poland</option><option>Portugal</option><option>Russia</option>
+          <option>Saudi Arabia</option><option>Senegal</option><option>South Africa</option>
+          <option>Spain</option><option>Sri Lanka</option><option>Sweden</option>
+          <option>Taiwan</option><option>Thailand</option><option>Tunisia</option>
+          <option>Turkey</option><option>Ukraine</option><option>UK</option>
+          <option>USA</option><option>Uzbekistan</option><option>Venezuela</option>
+          <option>Vietnam</option><option>Yemen</option>
+        </datalist>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
@@ -4832,7 +4807,7 @@ function clearWeek() {
 
 // ════════ RECIPES ════════
 // ════════ RECIPE FILTERS ════════
-const activeFilters = { time: null, ingredients: null, cuisine: null, special: new Set(), calories: null, cost: null, country: null };
+const activeFilters = { time: null, ingredients: null, cuisine: null, special: new Set(), calories: null, cost: null };
 
 function toggleFilter(btn) {
   const filter = btn.dataset.filter;
@@ -4887,11 +4862,6 @@ function canMakeFromPantry(recipe) {
   return matches.length / ings.length >= 0.7;
 }
 
-function applyCountryFilter(value) {
-  activeFilters.country = value || null;
-  applyRecipeFilters();
-}
-
 const COUNTRY_FLAGS = {
   'Italy':'🇮🇹','Japan':'🇯🇵','Mexico':'🇲🇽','India':'🇮🇳','China':'🇨🇳',
   'France':'🇫🇷','Spain':'🇪🇸','Thailand':'🇹🇭','Greece':'🇬🇷','Morocco':'🇲🇦',
@@ -4908,6 +4878,7 @@ function applyRecipeFilters() {
     !q ||
     r.name.toLowerCase().includes(q) ||
     (r.category||'').toLowerCase().includes(q) ||
+    (r.country||'').toLowerCase().includes(q) ||
     (r.desc||'').toLowerCase().includes(q)
   );
 
@@ -4942,10 +4913,6 @@ function applyRecipeFilters() {
       // Convert £ to $ approx (1 GBP ≈ 1.27 USD) — cost filter uses per-portion cost
       return (tc / serves) * 1.27 < 5;
     });
-  }
-
-  if (activeFilters.country) {
-    filtered = filtered.filter(r => r.country === activeFilters.country);
   }
 
   renderRecipes(filtered);
@@ -5866,15 +5833,40 @@ async function callClaude(systemPrompt, userMsg) {
     throw new Error(e.error || `AI error ${resp.status}`);
   }
   const data = await resp.json();
-  return data.response || '';
+  const raw = data.response;
+  // Workers AI sometimes returns an already-parsed object — normalise to string
+  if (raw === null || raw === undefined) return '';
+  if (typeof raw === 'object') return JSON.stringify(raw);
+  return String(raw);
+}
+
+function repairJSON(s) {
+  s = s.replace(/,(\s*[}\]])/g, '$1');
+  s = s.replace(/"cost"\s*:\s*[\xA3\$\u20AC\s]*(\d+\.?\d*)/g, '"cost": $1');
+  let inStr = false, esc = false, opens = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === '\\' && inStr) { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === '{' || c === '[') opens.push(c);
+    if (c === '}' || c === ']') opens.pop();
+  }
+  let out = s.trimEnd().replace(/,\s*$/, '');
+  for (let i = opens.length - 1; i >= 0; i--) out += opens[i] === '{' ? '}' : ']';
+  return out;
 }
 
 function safeParseJSON(text) {
-  // If the AI returned an already-parsed object (or array), use it directly
   if (text !== null && typeof text === 'object') return text;
-  if (typeof text !== 'string') throw new Error('AI returned no usable response');
-  const clean = text.replace(/```json|```/g, '').trim();
-  return JSON.parse(clean);
+  if (typeof text !== 'string' || !text.trim()) throw new Error('AI returned no usable response');
+  let s = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+  try { return JSON.parse(s); } catch (_) {}
+  s = repairJSON(s);
+  try { return JSON.parse(s); } catch (e) {
+    throw new Error('Could not parse AI response: ' + e.message);
+  }
 }
 
 // ── AI Generate Recipe from description ──────────────────────────────────────
@@ -6102,123 +6094,86 @@ function calcTotalCost(recipe) {
   return ings.reduce((sum, i) => sum + (i.cost ? Number(i.cost) : 0), 0);
 }
 
-// ── AI Update All Costs ───────────────────────────────────────────────────────
+// ── AI Update All Costs ────────────────────────────────────────────────
 async function aiUpdateAllCosts() {
   if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
   const btn = document.getElementById('ai-costs-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner dark"></span> Fetching costs…';
 
-  const BATCH = 5; // smaller batches — cost data is more detailed per ingredient
-  let updated = 0;
-  try {
-    for (let i = 0; i < state.recipes.length; i += BATCH) {
-      const batch = state.recipes.slice(i, i + BATCH);
+  const BATCH = 2; // 2 recipes per batch avoids token limit truncation
+  let updated = 0, skipped = 0;
 
+  for (let i = 0; i < state.recipes.length; i += BATCH) {
+    const batch = state.recipes.slice(i, i + BATCH);
+    const done = Math.min(i + BATCH, state.recipes.length);
+    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length}…`;
+    try {
       const recipeList = batch.map(r => ({
-        id: r.id,
-        name: r.name,
-        serves: r.serves || '4',
-        ingredients: (r.ingredients || []).map(ing => ({
-          name: ing.name,
-          qty: ing.qty || '',
-          unit: ing.unit || '',
-        })),
+        id: r.id, name: r.name, serves: r.serves || '4',
+        ingredients: (r.ingredients || []).map(ing => ({ name: ing.name, qty: ing.qty || '', unit: ing.unit || '' }))
       }));
-
       const raw = await callClaude(
         'You are a UK grocery pricing assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
-        `Estimate the cost in GBP (£) for each ingredient in each recipe, based on typical Sainsbury\'s supermarket prices.
-The cost should represent the actual amount USED in the recipe (not the whole pack price).
-For example: 400g chopped tomatoes tin ≈ £0.45, 500g beef mince ≈ £3.50, 1 onion ≈ £0.20, etc.
-
-Return a JSON array — one entry per recipe — with ingredient costs:
-[
-  {
-    "id": "recipe_id",
-    "ingredients": [
-      {"name": "ingredient name", "cost": 0.45}
-    ]
-  }
-]
-
-"cost" is a number in GBP to 2 decimal places representing the quantity used.
-
-Recipes to price:
-${JSON.stringify(recipeList)}`
+        `Price each ingredient for the quantity used in GBP. Use plain decimal numbers only, no currency symbols.
+Return ONLY this JSON structure, nothing else:
+[{"id":"recipe_id","ingredients":[{"name":"ingredient name","cost":0.45}]}]
+Recipes: ${JSON.stringify(recipeList)}`
       );
-
       const results = safeParseJSON(raw);
-      if (!Array.isArray(results)) throw new Error('Unexpected AI response');
-
+      if (!Array.isArray(results)) { skipped++; continue; }
       const saves = [];
       results.forEach(res => {
         if (!res.id || !Array.isArray(res.ingredients)) return;
         const recipe = state.recipes.find(r => r.id === res.id);
         if (!recipe) return;
-
-        // Merge costs into ingredients by name match
         res.ingredients.forEach(priced => {
-          const ing = recipe.ingredients.find(i =>
-            i.name.toLowerCase() === priced.name.toLowerCase()
-          );
-          if (ing && priced.cost !== undefined) {
-            ing.cost = Number(priced.cost);
-          }
+          const cost = parseFloat(String(priced.cost ?? '').replace(/[^\d.]/g, ''));
+          const ing = recipe.ingredients.find(i => i.name.toLowerCase() === priced.name.toLowerCase());
+          if (ing && !isNaN(cost) && cost > 0) ing.cost = cost;
         });
         updated++;
         saves.push(apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) }));
       });
       await Promise.all(saves);
-
-      const done = Math.min(i + BATCH, state.recipes.length);
-      btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length} done…`;
+    } catch(e) {
+      console.warn(`Costs batch ${i}–${done} skipped:`, e.message);
+      skipped++;
     }
-
-    applyRecipeFilters();
-    renderWeek();
-    btn.innerHTML = `✓ ${updated} recipes priced`;
-    setTimeout(() => { btn.disabled = false; btn.innerHTML = '💷 AI Update Costs'; }, 2500);
-  } catch(e) {
-    alert('Could not update costs: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '💷 AI Update Costs';
   }
+  applyRecipeFilters();
+  renderWeek();
+  btn.innerHTML = skipped ? `✓ ${updated} priced (${skipped} batches skipped)` : `✓ ${updated} recipes priced`;
+  setTimeout(() => { btn.disabled = false; btn.innerHTML = '💷 AI Update Costs'; }, 3000);
 }
 
-// ── AI Update All Calories ───────────────────────────────────────────────────
+// ── AI Update All Calories ───────────────────────────────────────
 async function aiUpdateAllCalories() {
   if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
   const btn = document.getElementById('ai-calories-btn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner dark"></span> Estimating calories…';
 
-  // Process in batches of 10 to stay within token limits
-  const BATCH = 10;
-  let updated = 0;
-  try {
-    for (let i = 0; i < state.recipes.length; i += BATCH) {
-      const batch = state.recipes.slice(i, i + BATCH);
+  const BATCH = 5;
+  let updated = 0, skipped = 0;
+
+  for (let i = 0; i < state.recipes.length; i += BATCH) {
+    const batch = state.recipes.slice(i, i + BATCH);
+    const done = Math.min(i + BATCH, state.recipes.length);
+    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length}…`;
+    try {
       const recipeList = batch.map(r => ({
-        id: r.id,
-        name: r.name,
-        serves: r.serves || '4',
-        ingredients: (r.ingredients || []).map(ing => `${ing.qty || ''} ${ing.unit || ''} ${ing.name}`.trim()).join(', '),
+        id: r.id, name: r.name, serves: r.serves || '4',
+        ingredients: (r.ingredients || []).map(i => `${i.qty||''} ${i.unit||''} ${i.name}`.trim()).join(', ')
       }));
-
       const raw = await callClaude(
-        'You are a nutritionist assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
-        `Estimate the calories per serving for each of these recipes based on the ingredients listed.
-Return a JSON array in the same order with one entry per recipe:
+        'You are a nutritionist. Respond ONLY with valid JSON — no markdown, no explanation.',
+        `Estimate kcal per serving for each recipe. Return ONLY this JSON array, nothing else:
 [{"id":"...","calories":550}]
-"calories" is an integer estimate of kcal per serving. Use realistic estimates for home cooking.
-
-Recipes:
-${JSON.stringify(recipeList)}`
+Recipes: ${JSON.stringify(recipeList)}`
       );
       const results = safeParseJSON(raw);
-      if (!Array.isArray(results)) throw new Error('Unexpected AI response');
-
+      if (!Array.isArray(results)) { skipped++; continue; }
       const saves = [];
       results.forEach(res => {
         if (!res.id || !res.calories) return;
@@ -6229,21 +6184,15 @@ ${JSON.stringify(recipeList)}`
         saves.push(apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) }));
       });
       await Promise.all(saves);
-
-      // Update progress
-      const done = Math.min(i + BATCH, state.recipes.length);
-      btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length} done…`;
+    } catch(e) {
+      console.warn(`Calories batch ${i}–${done} skipped:`, e.message);
+      skipped++;
     }
-
-    applyRecipeFilters();
-    renderWeek(); // refresh calorie badges on planner
-    btn.innerHTML = `✓ ${updated} recipes updated`;
-    setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔥 AI Update Calories'; }, 2500);
-  } catch(e) {
-    alert('Could not update calories: ' + e.message);
-    btn.disabled = false;
-    btn.innerHTML = '🔥 AI Update Calories';
   }
+  applyRecipeFilters();
+  renderWeek();
+  btn.innerHTML = skipped ? `✓ ${updated} updated (${skipped} batches skipped)` : `✓ ${updated} recipes updated`;
+  setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔥 AI Update Calories'; }, 3000);
 }
 
 async function aiGenerateRecipe() {
