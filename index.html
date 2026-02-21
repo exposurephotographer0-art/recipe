@@ -76,6 +76,34 @@
   }
   .icon-btn:hover { border-color:var(--danger); color:var(--danger); }
 
+  /* COOKED MODAL */
+  .cooked-ingredient-row {
+    display: grid;
+    grid-template-columns: 24px 1fr auto auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 9px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.15s;
+  }
+  .cooked-ingredient-row.in-pantry { border-color: #6a9e6f55; }
+  .cooked-ingredient-row.skipped { opacity: 0.45; }
+  .cooked-ingredient-row .ci-name { font-size: 0.88rem; color: var(--text); }
+  .cooked-ingredient-row .ci-qty-input {
+    width: 62px; text-align: center; padding: 5px 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.82rem;
+  }
+  .cooked-ingredient-row .ci-unit { font-size: 0.76rem; color: var(--text-muted); min-width: 26px; }
+  .ci-pantry-flag { font-size: 0.67rem; color: var(--success); }
+  .ci-missing-flag { font-size: 0.67rem; color: var(--text-muted); font-style: italic; }
+  .cooked-list { display: flex; flex-direction: column; gap: 7px; max-height: 52vh; overflow-y: auto; margin-bottom: 4px; }
+  .cooked-summary { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 15px; margin-bottom: 14px; font-size: 0.83rem; line-height: 1.6; color: var(--text-soft); }
+  .cooked-btn-cooked { background: var(--success); color: #fff; border: none; padding: 11px 22px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-weight: 500; font-size: 0.88rem; cursor: pointer; transition: opacity 0.2s; }
+  .cooked-btn-cooked:hover { opacity: 0.85; }
+
   /* WEEK GRID */
   .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:10px; margin-bottom:28px; }
   .day-card {
@@ -205,6 +233,26 @@
 
   /* RECIPES */
   .recipes-toolbar { display:flex; gap:10px; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; justify-content:space-between; }
+
+  /* RECIPE FILTERS */
+  .recipe-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; align-items:center; }
+  .filter-chip {
+    background:var(--surface2); border:1px solid var(--border); color:var(--text-muted);
+    padding:5px 13px; border-radius:20px; font-size:0.75rem; cursor:pointer;
+    font-family:'DM Sans',sans-serif; transition:all 0.15s; white-space:nowrap;
+  }
+  .filter-chip:hover { border-color:var(--accent); color:var(--accent); }
+  .filter-chip.active { background:var(--accent); color:var(--bg); border-color:var(--accent); font-weight:500; }
+  .filter-chip.pantry-chip.active { background:#6a9e6f; border-color:#6a9e6f; color:#fff; }
+  .filter-chip.onepot-chip.active { background:#7c3aed; border-color:#7c3aed; color:#fff; }
+  .filter-divider { width:1px; height:22px; background:var(--border); margin:0 2px; flex-shrink:0; }
+  .recipe-count { font-size:0.78rem; color:var(--text-muted); padding:5px 0; }
+  .cook-time-tag, .one-pot-tag, .pantry-match-tag {
+    font-size:0.65rem; padding:2px 7px; border-radius:10px; white-space:nowrap;
+  }
+  .cook-time-tag { color:var(--text-muted); background:var(--surface2); border:1px solid var(--border); }
+  .one-pot-tag { color:#a78bfa; background:#7c3aed15; border:1px solid #7c3aed33; }
+  .pantry-match-tag { color:var(--success); background:#6a9e6f15; border:1px solid #6a9e6f44; }
   .recipes-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px; }
   .recipe-card {
     background:var(--surface); border:1px solid var(--border); border-radius:12px;
@@ -309,6 +357,56 @@
   .nutr-chip .nutr-val { color:var(--accent); font-weight:600; font-size:0.92rem; }
   .nutr-chip .nutr-label { color:var(--text-muted); font-size:0.68rem; text-transform:uppercase; letter-spacing:0.06em; }
 
+  /* calorie tag */
+  .calorie-tag { color:#e8a87c; background:#e8a87c15; border:1px solid #e8a87c44; }
+  .calorie-pill {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:0.72rem; padding:3px 9px; border-radius:10px;
+    color:#e8a87c; background:#e8a87c15; border:1px solid #e8a87c44; white-space:nowrap;
+  }
+  .day-cal-badge {
+    font-size:0.68rem; color:#e8a87c; background:#e8a87c15;
+    border:1px solid #e8a87c33; border-radius:8px;
+    padding:2px 7px; display:inline-block; margin-top:2px;
+  }
+
+  /* cost styles */
+  .cost-tag { color:#7dd3a8; background:#7dd3a815; border:1px solid #7dd3a844; }
+  .cost-pill {
+    display:inline-flex; align-items:center; gap:4px;
+    font-size:0.72rem; padding:3px 9px; border-radius:10px;
+    color:#7dd3a8; background:#7dd3a815; border:1px solid #7dd3a844; white-space:nowrap;
+  }
+  .cost-breakdown {
+    background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; margin-top:14px;
+  }
+  .cost-breakdown-title {
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--text-muted); margin-bottom:10px; display:flex;
+    align-items:center; justify-content:space-between;
+  }
+  .cost-ing-row {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.82rem; padding:5px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .cost-ing-row:last-child { border-bottom:none; }
+  .cost-ing-name { color:var(--text-soft); flex:1; }
+  .cost-ing-price { color:#7dd3a8; font-weight:500; font-size:0.82rem; white-space:nowrap; margin-left:10px; }
+  .cost-total-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0 0; margin-top:6px; font-size:0.9rem; font-weight:600;
+  }
+  .cost-total-label { color:var(--text-soft); }
+  .cost-total-val { color:#7dd3a8; font-size:1rem; }
+  .cost-per-portion { font-size:0.78rem; color:var(--text-muted); }
+  .day-cost-badge {
+    font-size:0.68rem; color:#7dd3a8; background:#7dd3a815;
+    border:1px solid #7dd3a833; border-radius:8px;
+    padding:2px 7px; display:inline-block; margin-top:2px;
+  }
+
   /* pantry match highlight */
   .ingredient-item.in-pantry { border-color:#6a9e6f44; }
   .pantry-flag { font-size:0.68rem; color:var(--success); white-space:nowrap; }
@@ -356,11 +454,49 @@
         <h1 class="page-title">Recipe Catalog</h1>
         <p class="page-sub">Your personal dinner library.</p>
       </div>
-      <button class="btn-primary" onclick="openRecipeModal(null)">+ New Recipe</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <button class="ai-btn-secondary" onclick="aiUpdateAllCalories()" id="ai-calories-btn">🔥 AI Update Calories</button>
+        <button class="ai-btn-secondary" onclick="aiUpdateAllCosts()" id="ai-costs-btn">💷 AI Update Costs</button>
+        <button class="ai-btn-secondary" onclick="openAiRecipeModal()">✨ AI Generate Recipe</button>
+        <button class="btn-secondary" onclick="openUrlImportModal()">🔗 Import from URL</button>
+        <button class="btn-primary" onclick="openRecipeModal(null)">+ New Recipe</button>
+      </div>
     </div>
-    <div style="margin-bottom:18px">
-      <input type="text" placeholder="Search recipes…" oninput="renderRecipes(this.value)" style="max-width:340px">
+
+    <!-- Search + Filters -->
+    <div style="margin-bottom:14px">
+      <input type="text" placeholder="Search recipes…" id="recipe-search" oninput="applyRecipeFilters()" style="max-width:340px">
     </div>
+    <div class="recipe-filters" id="recipe-filters">
+      <!-- Time -->
+      <button class="filter-chip" data-filter="time" data-value="under30" onclick="toggleFilter(this)">⏱ Under 30 min</button>
+      <button class="filter-chip" data-filter="time" data-value="under60" onclick="toggleFilter(this)">⏱ Under 1 hour</button>
+      <div class="filter-divider"></div>
+      <!-- Ingredients -->
+      <button class="filter-chip" data-filter="ingredients" data-value="few" onclick="toggleFilter(this)">🧄 ≤ 6 ingredients</button>
+      <button class="filter-chip" data-filter="ingredients" data-value="many" onclick="toggleFilter(this)">🧺 7+ ingredients</button>
+      <div class="filter-divider"></div>
+      <!-- Cuisine -->
+      <button class="filter-chip" data-filter="cuisine" data-value="Pasta" onclick="toggleFilter(this)">🍝 Pasta</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Curry" onclick="toggleFilter(this)">🍛 Curry</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Asian" onclick="toggleFilter(this)">🥢 Asian</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Fish" onclick="toggleFilter(this)">🐟 Fish</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Meat" onclick="toggleFilter(this)">🥩 Meat</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Vegetarian" onclick="toggleFilter(this)">🥦 Vegetarian</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Soup" onclick="toggleFilter(this)">🍲 Soup</button>
+      <button class="filter-chip" data-filter="cuisine" data-value="Salad" onclick="toggleFilter(this)">🥗 Salad</button>
+      <div class="filter-divider"></div>
+      <!-- Special -->
+      <button class="filter-chip onepot-chip" data-filter="special" data-value="onepot" onclick="toggleFilter(this)">🥘 1-pot</button>
+      <button class="filter-chip pantry-chip" data-filter="special" data-value="pantry" onclick="toggleFilter(this)">✓ Can make now</button>
+      <div class="filter-divider"></div>
+      <!-- Calories -->
+      <button class="filter-chip" data-filter="calories" data-value="under400" onclick="toggleFilter(this)">🔥 Under 400 kcal</button>
+      <button class="filter-chip" data-filter="calories" data-value="under600" onclick="toggleFilter(this)">🔥 Under 600 kcal</button>
+      <button class="filter-chip" data-filter="calories" data-value="over600" onclick="toggleFilter(this)">🔥 600+ kcal</button>
+    </div>
+    <div id="recipe-filter-count" class="recipe-count" style="margin-bottom:14px"></div>
+
     <div class="recipes-grid" id="recipes-grid"></div>
   </div>
 
@@ -462,6 +598,20 @@
         <input type="text" id="rec-serves" placeholder="e.g. 4">
       </div>
     </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group">
+        <label>Cook Time (minutes)</label>
+        <input type="number" id="rec-cooktime" placeholder="e.g. 30" min="0">
+      </div>
+      <div class="form-group">
+        <label>Calories per serving (kcal)</label>
+        <input type="number" id="rec-calories" placeholder="e.g. 550" min="0">
+      </div>
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:4px">
+        <input type="checkbox" id="rec-onepot" style="width:16px;height:16px;cursor:pointer;flex-shrink:0">
+        <label for="rec-onepot" style="cursor:pointer;margin:0;font-size:0.85rem">🥘 One-pot / one-tray meal</label>
+      </div>
     <div class="form-group">
       <label>Description</label>
       <textarea id="rec-desc" placeholder="Brief description…" style="min-height:55px"></textarea>
@@ -527,6 +677,57 @@
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('pantry-modal')">Cancel</button>
       <button class="btn-primary" onclick="savePantryItem()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: AI Generate Recipe -->
+<div class="modal-overlay" id="ai-recipe-gen-modal">
+  <div class="modal wide">
+    <h2>✨ AI Generate Recipe</h2>
+    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px">Describe what you want and AI will build a full recipe for you.</p>
+    <div class="form-group">
+      <label>What would you like to cook?</label>
+      <textarea id="ai-recipe-prompt" placeholder="e.g. A quick weeknight pasta with chorizo and cherry tomatoes… or a healthy Thai green curry… or something with leftover chicken and rice…" style="min-height:90px"></textarea>
+    </div>
+    <div id="ai-recipe-gen-error" style="color:var(--danger);font-size:0.82rem;margin-bottom:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('ai-recipe-gen-modal')">Cancel</button>
+      <button class="ai-btn" onclick="runAiRecipeGen()" id="ai-recipe-gen-btn" style="font-size:0.88rem;padding:10px 22px">✨ Generate</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import Recipe from URL -->
+<div class="modal-overlay" id="url-import-modal">
+  <div class="modal wide">
+    <h2>🔗 Import Recipe from URL</h2>
+    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px">Paste a link to any recipe page — a food blog, BBC Good Food, Delicious, etc. — and AI will extract the recipe.</p>
+    <div class="form-group">
+      <label>Recipe URL</label>
+      <input type="text" id="url-import-input" placeholder="https://www.bbcgoodfood.com/recipes/…">
+    </div>
+    <div id="url-import-error" style="color:var(--danger);font-size:0.82rem;margin-bottom:8px;display:none"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('url-import-modal')">Cancel</button>
+      <button class="ai-btn" onclick="runUrlImport()" id="url-import-btn" style="font-size:0.88rem;padding:10px 22px">🔗 Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: I Cooked This -->
+<div class="modal-overlay" id="cooked-modal">
+  <div class="modal wide">
+    <h2 id="cooked-modal-title">✓ I Cooked This</h2>
+    <div id="cooked-summary" class="cooked-summary"></div>
+    <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:12px">
+      Tick off each ingredient you used — adjust the quantity if you used more or less. Untick anything you didn't use. Then hit <strong>Update Pantry</strong> to deduct them.
+    </p>
+    <div class="cooked-list" id="cooked-ingredient-list"></div>
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn-secondary" onclick="closeModal('cooked-modal')">Cancel</button>
+      <button class="btn-secondary" onclick="cookedSelectAll()">Select all</button>
+      <button class="cooked-btn-cooked" onclick="confirmCooked()">✓ Update Pantry</button>
     </div>
   </div>
 </div>
@@ -731,7 +932,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   renderWeek();
-  renderRecipes();
+  applyRecipeFilters();
   renderShopping();
   renderPantry();
   updateBadges();
@@ -788,13 +989,15 @@ function renderWeek() {
       <div class="day-label">${day}</div>
       <div class="day-meal ${meal ? '' : 'empty'}">${meal ? meal.name : 'No meal planned'}</div>
       ${meal ? `<div style="font-size:0.73rem;color:var(--text-muted)">${(meal.ingredients||[]).length} ingredient${(meal.ingredients||[]).length !== 1 ? 's' : ''}</div>` : ''}
+      ${meal && meal.recipeId ? (() => { const rec = state.recipes.find(r => r.id === meal.recipeId); const badges = []; if (rec && rec.calories) badges.push(`<div class="day-cal-badge">🔥 ${rec.calories} kcal</div>`); const tc = rec ? calcTotalCost(rec) : 0; if (tc) { const sv = parseInt(rec.serves)||4; badges.push(`<div class="day-cost-badge">💷 £${(tc/sv).toFixed(2)}/portion</div>`); } return badges.join(''); })() : ''}
       <div class="day-actions">
         ${!meal
           ? `<button class="btn-sm" onclick="openPickerModal(${i})">+ Add</button>
              <button class="ai-btn" onclick="aiSuggestDay(${i})" title="AI suggestions" style="font-size:0.65rem;padding:4px 8px">✨</button>`
           : `<button class="btn-sm" onclick="openPickerModal(${i})">Change</button>
              <button class="btn-sm" onclick="openMealModal(${i})">Edit</button>
-             <button class="btn-sm danger" onclick="removeMeal(${i})">Remove</button>`
+             <button class="btn-sm danger" onclick="removeMeal(${i})">Remove</button>
+             <button class="btn-sm" style="border-color:#6a9e6f55;color:var(--success)" onclick="openCookedModal(${i})" title="I cooked this!">✓ Cooked</button>`
         }
       </div>`;
     grid.appendChild(card);
@@ -884,31 +1087,156 @@ function clearWeek() {
 }
 
 // ════════ RECIPES ════════
-function renderRecipes(search) {
-  const grid = document.getElementById('recipes-grid');
-  const q = (search || '').toLowerCase();
-  const filtered = state.recipes.filter(r =>
+// ════════ RECIPE FILTERS ════════
+const activeFilters = { time: null, ingredients: null, cuisine: null, special: new Set(), calories: null };
+
+function toggleFilter(btn) {
+  const filter = btn.dataset.filter;
+  const value  = btn.dataset.value;
+
+  if (filter === 'special') {
+    // Special filters are independent toggles
+    if (activeFilters.special.has(value)) {
+      activeFilters.special.delete(value);
+      btn.classList.remove('active');
+    } else {
+      activeFilters.special.add(value);
+      btn.classList.add('active');
+    }
+  } else {
+    // Radio-style: one active per group
+    const siblings = document.querySelectorAll(`[data-filter="${filter}"]`);
+    if (activeFilters[filter] === value) {
+      // Deselect
+      activeFilters[filter] = null;
+      btn.classList.remove('active');
+    } else {
+      siblings.forEach(s => s.classList.remove('active'));
+      activeFilters[filter] = value;
+      btn.classList.add('active');
+    }
+  }
+  applyRecipeFilters();
+}
+
+function estimateCookTime(recipe) {
+  // Use stored cookTime first
+  if (recipe.cookTime && !isNaN(Number(recipe.cookTime))) return Number(recipe.cookTime);
+  // Infer from steps text
+  const text = (recipe.steps || '') + ' ' + (recipe.desc || '');
+  const mins = [];
+  const hourMatches = text.match(/(\d+)\s*(?:hour|hr)/gi) || [];
+  hourMatches.forEach(m => { const n = parseInt(m); if (!isNaN(n)) mins.push(n * 60); });
+  const minMatches = text.match(/(\d+)\s*(?:min|minute)/gi) || [];
+  minMatches.forEach(m => { const n = parseInt(m); if (!isNaN(n)) mins.push(n); });
+  if (!mins.length) return null;
+  return Math.max(...mins);
+}
+
+function canMakeFromPantry(recipe) {
+  if (!state.pantry || !state.pantry.length) return false;
+  const pantryNames = state.pantry.map(p => p.name.toLowerCase());
+  const ings = (recipe.ingredients || []).map(i => i.name.toLowerCase());
+  if (!ings.length) return false;
+  const matches = ings.filter(ing => pantryNames.some(p => p.includes(ing) || ing.includes(p)));
+  // "Can make now" = 70%+ of ingredients in pantry
+  return matches.length / ings.length >= 0.7;
+}
+
+function applyRecipeFilters() {
+  const q = (document.getElementById('recipe-search')?.value || '').toLowerCase();
+  let filtered = state.recipes.filter(r =>
+    !q ||
     r.name.toLowerCase().includes(q) ||
     (r.category||'').toLowerCase().includes(q) ||
-    (r.desc||'').toLowerCase().includes(q));
+    (r.desc||'').toLowerCase().includes(q)
+  );
+
+  if (activeFilters.time === 'under30') {
+    filtered = filtered.filter(r => { const t = estimateCookTime(r); return t !== null && t <= 30; });
+  } else if (activeFilters.time === 'under60') {
+    filtered = filtered.filter(r => { const t = estimateCookTime(r); return t !== null && t <= 60; });
+  }
+
+  if (activeFilters.ingredients === 'few') {
+    filtered = filtered.filter(r => (r.ingredients||[]).length <= 6);
+  } else if (activeFilters.ingredients === 'many') {
+    filtered = filtered.filter(r => (r.ingredients||[]).length >= 7);
+  }
+
+  if (activeFilters.cuisine) {
+    filtered = filtered.filter(r => (r.category||'') === activeFilters.cuisine);
+  }
+
+  if (activeFilters.special.has('onepot')) {
+    filtered = filtered.filter(r => r.onePot === true || r.onePot === 1);
+  }
+  if (activeFilters.special.has('pantry')) {
+    filtered = filtered.filter(r => canMakeFromPantry(r));
+  }
+
+  if (activeFilters.calories === 'under400') {
+    filtered = filtered.filter(r => r.calories && Number(r.calories) < 400);
+  } else if (activeFilters.calories === 'under600') {
+    filtered = filtered.filter(r => r.calories && Number(r.calories) < 600);
+  } else if (activeFilters.calories === 'over600') {
+    filtered = filtered.filter(r => r.calories && Number(r.calories) >= 600);
+  }
+
+  renderRecipes(filtered);
+}
+
+function renderRecipes(recipesOrSearch) {
+  const grid = document.getElementById('recipes-grid');
+  // Accept either a pre-filtered array or a search string (for back-compat)
+  let filtered;
+  if (Array.isArray(recipesOrSearch)) {
+    filtered = recipesOrSearch;
+  } else {
+    const q = (recipesOrSearch || '').toLowerCase();
+    filtered = state.recipes.filter(r =>
+      !q ||
+      r.name.toLowerCase().includes(q) ||
+      (r.category||'').toLowerCase().includes(q) ||
+      (r.desc||'').toLowerCase().includes(q)
+    );
+  }
+
+  const countEl = document.getElementById('recipe-filter-count');
+  if (countEl) countEl.textContent = `${filtered.length} recipe${filtered.length !== 1 ? 's' : ''}`;
+
   if (!filtered.length) {
-    grid.innerHTML = `<div class="empty-state"><div class="big">📖</div><h3>No recipes found</h3><p>Add your first recipe above.</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="big">📖</div><h3>No recipes match</h3><p>Try clearing some filters.</p></div>`;
     return;
   }
-  grid.innerHTML = filtered.map(r => `
+
+  grid.innerHTML = filtered.map(r => {
+    const cookTime  = estimateCookTime(r);
+    const inPantry  = canMakeFromPantry(r);
+    const totalCost = calcTotalCost(r);
+    const serves    = parseInt(r.serves) || 4;
+    const tags = [];
+    if (cookTime) tags.push(`<span class="cook-time-tag">⏱ ${cookTime < 60 ? cookTime+'m' : Math.round(cookTime/60)+'h'}</span>`);
+    if (r.onePot) tags.push(`<span class="one-pot-tag">🥘 1-pot</span>`);
+    if (inPantry) tags.push(`<span class="pantry-match-tag">✓ Can make now</span>`);
+    if (r.calories) tags.push(`<span class="cook-time-tag calorie-tag">🔥 ${r.calories} kcal/portion</span>`);
+    if (totalCost) tags.push(`<span class="cook-time-tag cost-tag">💷 £${(totalCost/serves).toFixed(2)}/portion</span>`);
+    return `
     <div class="recipe-card">
       <div class="recipe-card-header">
         <div class="recipe-name">${r.name}</div>
         <span class="recipe-tag">${r.category||''}</span>
       </div>
       <div class="recipe-desc">${r.desc||''}</div>
-      <div class="recipe-meta">Serves ${r.serves} · ${(r.ingredients||[]).length} ingredients</div>
+      ${tags.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap">${tags.join('')}</div>` : ''}
+      <div class="recipe-meta">Serves ${r.serves} · ${(r.ingredients||[]).length} ingredients${totalCost ? ` · £${totalCost.toFixed(2)} total` : ''}</div>
       <div class="recipe-actions">
         <button class="btn-sm" onclick="viewRecipe('${r.id}')">View</button>
         <button class="btn-sm" onclick="openRecipeModal('${r.id}')">Edit</button>
         <button class="btn-sm danger" onclick="deleteRecipe('${r.id}')">Delete</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   updateBadges();
 }
 
@@ -916,19 +1244,52 @@ function viewRecipe(id) {
   const r = state.recipes.find(x => x.id === id);
   if (!r) return;
   const steps = (r.steps||'').split('\n').filter(s => s.trim());
+  const serves = parseInt(r.serves) || 4;
+  const totalCost = calcTotalCost(r);
+  const hasCosts = (r.ingredients||[]).some(i => i.cost);
+
+  // Build cost breakdown table
+  let costSection = '';
+  if (hasCosts) {
+    const rows = (r.ingredients||[]).map(i =>
+      `<div class="cost-ing-row">
+        <span class="cost-ing-name">${i.name}${i.qty ? ` — ${i.qty} ${i.unit||''}` : ''}</span>
+        <span class="cost-ing-price">${i.cost ? '£'+Number(i.cost).toFixed(2) : '—'}</span>
+      </div>`
+    ).join('');
+    costSection = `
+      <div class="cost-breakdown">
+        <div class="cost-breakdown-title">
+          <span>💷 Ingredient Costs <span style="font-size:0.65rem;color:var(--border)">(Sainsbury's approx.)</span></span>
+        </div>
+        ${rows}
+        <div class="cost-total-row">
+          <span class="cost-total-label">Total recipe cost</span>
+          <span class="cost-total-val">£${totalCost.toFixed(2)}</span>
+        </div>
+        <div style="text-align:right;margin-top:4px">
+          <span class="cost-per-portion">≈ £${(totalCost/serves).toFixed(2)} per portion</span>
+        </div>
+      </div>`;
+  }
+
   document.getElementById('recipe-detail-content').innerHTML = `
     <h2>${r.name}</h2>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
       <span class="recipe-tag">${r.category||''}</span>
       <span class="recipe-tag">Serves ${r.serves}</span>
+      ${r.cookTime ? `<span class="cook-time-tag" style="display:inline-block;border-radius:20px;font-size:0.65rem;padding:3px 8px">⏱ ${r.cookTime}m</span>` : ''}
+      ${r.calories ? `<span class="calorie-pill">🔥 ${r.calories} kcal/portion</span>` : ''}
+      ${totalCost ? `<span class="cost-pill">💷 £${(totalCost/serves).toFixed(2)}/portion</span>` : ''}
     </div>
     ${r.desc ? `<p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:18px;line-height:1.6">${r.desc}</p>` : ''}
     <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px">Ingredients</div>
-    <div class="ing-chips" style="margin-bottom:22px">
-      ${(r.ingredients||[]).map(i => `<span class="ing-chip">${i.name}${i.qty ? ' — '+i.qty+' '+(i.unit||'') : ''}</span>`).join('')}
+    <div class="ing-chips" style="margin-bottom:${hasCosts ? '10px' : '22px'}">
+      ${(r.ingredients||[]).map(i => `<span class="ing-chip">${i.name}${i.qty ? ' — '+i.qty+' '+(i.unit||'') : ''}${i.cost ? ' <span style="color:#7dd3a8;font-size:0.75em">£'+Number(i.cost).toFixed(2)+'</span>' : ''}</span>`).join('')}
     </div>
+    ${costSection}
     ${steps.length ? `
-      <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px">Method</div>
+      <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px;margin-top:18px">Method</div>
       <div class="recipe-steps"><ol>${steps.map(s => `<li>${s.replace(/^\d+\.\s*/,'')}</li>`).join('')}</ol></div>
     ` : ''}`;
   document.getElementById('recipe-detail-actions').innerHTML = `
@@ -941,11 +1302,14 @@ function openRecipeModal(id) {
   editingRecipeId = id || null;
   const r = id ? state.recipes.find(x => x.id === id) : null;
   document.getElementById('recipe-modal-title').textContent = r ? 'Edit Recipe' : 'New Recipe';
-  document.getElementById('rec-name').value  = r ? r.name : '';
-  document.getElementById('rec-cat').value   = r ? r.category : 'Pasta';
-  document.getElementById('rec-serves').value = r ? r.serves : '4';
-  document.getElementById('rec-desc').value  = r ? (r.desc||'') : '';
-  document.getElementById('rec-steps').value = r ? (r.steps||'') : '';
+  document.getElementById('rec-name').value     = r ? r.name : '';
+  document.getElementById('rec-cat').value      = r ? r.category : 'Pasta';
+  document.getElementById('rec-serves').value   = r ? r.serves : '4';
+  document.getElementById('rec-desc').value     = r ? (r.desc||'') : '';
+  document.getElementById('rec-steps').value    = r ? (r.steps||'') : '';
+  document.getElementById('rec-cooktime').value = r ? (r.cookTime||'') : '';
+  document.getElementById('rec-calories').value = r ? (r.calories||'') : '';
+  document.getElementById('rec-onepot').checked = r ? !!(r.onePot) : false;
   const container = document.getElementById('rec-ingredients-container');
   container.innerHTML = '';
   recIngCount = 0;
@@ -971,6 +1335,19 @@ function addRecipeIngRow(ing = null) {
 function saveRecipe() {
   const name = document.getElementById('rec-name').value.trim();
   if (!name) { alert('Please enter a recipe name.'); return; }
+  const cookTimeVal = document.getElementById('rec-cooktime').value.trim();
+  const caloriesVal = document.getElementById('rec-calories').value.trim();
+  // Collect ingredients from form, but preserve any existing cost data
+  const existingRecipe = editingRecipeId ? state.recipes.find(r => r.id === editingRecipeId) : null;
+  const formIngredients = collectIngredients('ring');
+  // Try to merge costs from existing ingredients by name match
+  const mergedIngredients = formIngredients.map(ing => {
+    if (!existingRecipe) return ing;
+    const existing = (existingRecipe.ingredients||[]).find(e =>
+      e.name.toLowerCase() === ing.name.toLowerCase()
+    );
+    return existing && existing.cost !== undefined ? { ...ing, cost: existing.cost } : ing;
+  });
   const recipe = {
     id:          editingRecipeId || 'r_' + Date.now(),
     name,
@@ -978,7 +1355,10 @@ function saveRecipe() {
     serves:      document.getElementById('rec-serves').value.trim(),
     desc:        document.getElementById('rec-desc').value.trim(),
     steps:       document.getElementById('rec-steps').value.trim(),
-    ingredients: collectIngredients('ring'),
+    ingredients: mergedIngredients,
+    cookTime:    cookTimeVal ? Number(cookTimeVal) : null,
+    calories:    caloriesVal ? Number(caloriesVal) : null,
+    onePot:      document.getElementById('rec-onepot').checked,
   };
   if (editingRecipeId) {
     const idx = state.recipes.findIndex(r => r.id === editingRecipeId);
@@ -989,7 +1369,7 @@ function saveRecipe() {
   apiFetch('/api/recipes', { method:'POST', body: JSON.stringify(recipe) });
   closeModal('recipe-modal');
   const searchEl = document.querySelector('#view-recipes input');
-  renderRecipes(searchEl ? searchEl.value : '');
+  applyRecipeFilters();
   updateBadges();
 }
 function deleteRecipe(id) {
@@ -997,7 +1377,7 @@ function deleteRecipe(id) {
   state.recipes = state.recipes.filter(r => r.id !== id);
   apiFetch('/api/recipes/' + id, { method:'DELETE' });
   const searchEl = document.querySelector('#view-recipes input');
-  renderRecipes(searchEl ? searchEl.value : '');
+  applyRecipeFilters();
   updateBadges();
 }
 
@@ -1327,6 +1707,137 @@ function clearPantry() {
   updateBadges();
 }
 
+// ════════ I COOKED THIS ════════
+let cookedDayIndex = null;
+
+function openCookedModal(dayIndex) {
+  const meal = state.meals[dayIndex];
+  if (!meal) return;
+  cookedDayIndex = dayIndex;
+
+  // Build pantry lookup by name (lowercase)
+  const pantryMap = {};
+  (state.pantry || []).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+
+  const ings = meal.ingredients || [];
+  document.getElementById('cooked-modal-title').textContent = `✓ Cooked: ${meal.name}`;
+
+  // Summary line
+  const inPantryCount = ings.filter(i => pantryMap[i.name.toLowerCase()]).length;
+  document.getElementById('cooked-summary').innerHTML =
+    `<strong>${meal.name}</strong> uses <strong>${ings.length} ingredient${ings.length !== 1 ? 's' : ''}</strong>.` +
+    (inPantryCount > 0
+      ? ` <span style="color:var(--success)">${inPantryCount} are in your pantry</span> and will be deducted.`
+      : ' None of these are currently tracked in your pantry — they\'ll be noted as used.');
+
+  // Build ingredient rows
+  const list = document.getElementById('cooked-ingredient-list');
+  list.innerHTML = ings.map((ing, i) => {
+    const pantryItem = pantryMap[ing.name.toLowerCase()];
+    const inPantry   = !!pantryItem;
+    const pantryQty  = inPantry && pantryItem.qty ? ` (have ${pantryItem.qty}${pantryItem.unit ? ' '+pantryItem.unit : ''})` : '';
+    return `<div class="cooked-ingredient-row ${inPantry ? 'in-pantry' : ''}" id="ci-row-${i}">
+      <input type="checkbox" checked id="ci-check-${i}" style="width:16px;height:16px;cursor:pointer;flex-shrink:0"
+        onchange="document.getElementById('ci-row-${i}').classList.toggle('skipped', !this.checked)">
+      <span class="ci-name">
+        ${ing.name}
+        ${inPantry
+          ? `<span class="ci-pantry-flag"> ✓ in pantry${pantryQty}</span>`
+          : `<span class="ci-missing-flag"> not in pantry</span>`}
+      </span>
+      <input type="text" class="ci-qty-input" id="ci-qty-${i}" value="${ing.qty || ''}" placeholder="qty">
+      <span class="ci-unit">${ing.unit || ''}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('cooked-modal').classList.add('open');
+}
+
+function cookedSelectAll() {
+  const meal = state.meals[cookedDayIndex];
+  if (!meal) return;
+  (meal.ingredients || []).forEach((_, i) => {
+    const chk = document.getElementById(`ci-check-${i}`);
+    const row = document.getElementById(`ci-row-${i}`);
+    if (chk) { chk.checked = true; }
+    if (row) row.classList.remove('skipped');
+  });
+}
+
+async function confirmCooked() {
+  const meal = state.meals[cookedDayIndex];
+  if (!meal) return;
+
+  const pantryMap = {};
+  (state.pantry || []).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+
+  const ings = meal.ingredients || [];
+  const updates = []; // [{pantryItem, deductQty, deductUnit}]
+  const notInPantry = []; // ingredients used but not tracked
+
+  ings.forEach((ing, i) => {
+    const checked = document.getElementById(`ci-check-${i}`)?.checked;
+    if (!checked) return; // skipped
+
+    const usedQtyRaw = document.getElementById(`ci-qty-${i}`)?.value?.trim();
+    const usedQty    = parseFloat(usedQtyRaw);
+    const pantryItem = pantryMap[ing.name.toLowerCase()];
+
+    if (pantryItem) {
+      updates.push({ pantryItem, usedQty: isNaN(usedQty) ? null : usedQty, unit: ing.unit || '' });
+    } else {
+      notInPantry.push(ing.name);
+    }
+  });
+
+  // Apply deductions to pantry state + persist
+  const saveOps = [];
+  for (const { pantryItem, usedQty, unit } of updates) {
+    const currentQty = parseFloat(pantryItem.qty);
+    let newQty = null;
+
+    if (!isNaN(currentQty) && usedQty !== null && pantryItem.unit === unit) {
+      newQty = Math.max(0, currentQty - usedQty);
+    }
+
+    const idx = state.pantry.indexOf(pantryItem);
+    if (newQty !== null && newQty <= 0) {
+      // Remove from pantry — fully used up
+      state.pantry.splice(idx, 1);
+      saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, { method: 'DELETE' }));
+    } else {
+      const updatedQty = newQty !== null ? String(newQty) : pantryItem.qty;
+      state.pantry[idx] = { ...pantryItem, qty: updatedQty };
+      saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name: pantryItem.name, qty: updatedQty, unit: pantryItem.unit, pantry_category: pantryItem.pantry_category }),
+      }));
+    }
+  }
+
+  await Promise.all(saveOps);
+  renderPantry();
+  updateBadges();
+  closeModal('cooked-modal');
+
+  // Show a friendly confirmation
+  const deducted  = updates.length;
+  const removed   = updates.filter(u => {
+    const cur = parseFloat(u.pantryItem.qty); // original before update — show count
+    return u.usedQty !== null && !isNaN(cur) && cur - u.usedQty <= 0;
+  }).length;
+
+  let msg = `✓ Pantry updated! Deducted ${deducted} ingredient${deducted !== 1 ? 's' : ''}`;
+  if (notInPantry.length) msg += `. ${notInPantry.length} item${notInPantry.length !== 1 ? 's' : ''} weren't in your pantry (${notInPantry.slice(0,3).join(', ')}${notInPantry.length > 3 ? '…' : ''})`;
+  msg += '.';
+
+  const banner = document.getElementById('success-msg');
+  banner.textContent = msg;
+  banner.style.display = 'block';
+  showView('pantry');
+  setTimeout(() => { banner.style.display = 'none'; banner.textContent = '✓ Shopping added to pantry!'; }, 5000);
+}
+
 async function aiCategorisePantry() {
   if (!state.pantry.length) { alert('Your pantry is empty.'); return; }
   const btn = document.getElementById('ai-cat-btn');
@@ -1386,6 +1897,157 @@ async function callClaude(systemPrompt, userMsg) {
 function safeParseJSON(text) {
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
+}
+
+// ── AI Generate Recipe from description ──────────────────────────────────────
+function openAiRecipeModal() {
+  document.getElementById('ai-recipe-prompt').value = '';
+  document.getElementById('ai-recipe-gen-error').style.display = 'none';
+  document.getElementById('ai-recipe-gen-modal').classList.add('open');
+  setTimeout(() => document.getElementById('ai-recipe-prompt').focus(), 50);
+}
+
+async function runAiRecipeGen() {
+  const prompt = document.getElementById('ai-recipe-prompt').value.trim();
+  if (!prompt) { showRecipeGenError('Please describe what you want to cook.'); return; }
+  const btn = document.getElementById('ai-recipe-gen-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Generating…';
+  document.getElementById('ai-recipe-gen-error').style.display = 'none';
+  try {
+    const raw = await callClaude(
+      'You are a professional recipe writer. Respond ONLY with valid JSON — no markdown, no explanation.',
+      `Create a complete recipe based on this request: "${prompt}"
+
+Return JSON with exactly these keys:
+{
+  "name": "Recipe Name",
+  "category": "Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other",
+  "serves": "4",
+  "desc": "One enticing sentence description",
+  "cookTime": 30,
+  "onePot": false,
+  "calories": 550,
+  "ingredients": [{"name":"","qty":"","unit":""}],
+  "steps": "1. Step one\\n2. Step two\\n3. Step three"
+}
+cookTime is total cook time in minutes (integer). onePot is true if the whole dish can be made in one pan/pot/tray. calories is estimated kcal per serving (integer).
+Include 6-14 ingredients with UK measurements. 4-8 clear steps.`
+    );
+    const r = safeParseJSON(raw);
+    if (!r.name) throw new Error('AI did not return a valid recipe');
+    const recipe = {
+      id: 'r_' + Date.now(),
+      name: r.name,
+      category: r.category || 'Other',
+      serves: r.serves || '4',
+      desc: r.desc || '',
+      steps: r.steps || '',
+      ingredients: r.ingredients || [],
+      cookTime: r.cookTime || null,
+      calories: r.calories || null,
+      onePot: !!r.onePot,
+    };
+    state.recipes.push(recipe);
+    await apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) });
+    closeModal('ai-recipe-gen-modal');
+    applyRecipeFilters();
+    updateBadges();
+    // Open the recipe so user can review it
+    setTimeout(() => viewRecipe(recipe.id), 200);
+  } catch(e) {
+    showRecipeGenError('Could not generate recipe: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.innerHTML = '✨ Generate';
+  }
+}
+
+function showRecipeGenError(msg) {
+  const el = document.getElementById('ai-recipe-gen-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+// ── Import Recipe from URL ────────────────────────────────────────────────────
+function openUrlImportModal() {
+  document.getElementById('url-import-input').value = '';
+  document.getElementById('url-import-error').style.display = 'none';
+  document.getElementById('url-import-modal').classList.add('open');
+  setTimeout(() => document.getElementById('url-import-input').focus(), 50);
+}
+
+async function runUrlImport() {
+  const url = document.getElementById('url-import-input').value.trim();
+  if (!url || !url.startsWith('http')) { showUrlImportError('Please enter a valid URL starting with http.'); return; }
+  const btn = document.getElementById('url-import-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Fetching…';
+  document.getElementById('url-import-error').style.display = 'none';
+  try {
+    // Step 1: fetch the page HTML via our Worker proxy (bypasses CORS)
+    const fetchResp = await apiFetch('/api/fetch-url', { method: 'POST', body: JSON.stringify({ url }) });
+    if (!fetchResp.html) throw new Error('Could not retrieve that page.');
+
+    btn.innerHTML = '<span class="spinner"></span> Extracting recipe…';
+
+    // Step 2: strip tags to reduce tokens, pass to AI
+    const plainText = fetchResp.html
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s{3,}/g, '\n')
+      .slice(0, 12000);
+
+    const raw = await callClaude(
+      'You are a recipe extraction assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
+      `Extract the recipe from this webpage text and return it as JSON.
+If there is no clear recipe, return {"error":"no recipe found"}.
+
+Webpage text:
+${plainText}
+
+Return JSON with exactly these keys:
+{
+  "name": "Recipe Name",
+  "category": "Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other",
+  "serves": "4",
+  "desc": "One sentence description",
+  "cookTime": 30,
+  "onePot": false,
+  "calories": 550,
+  "ingredients": [{"name":"","qty":"","unit":""}],
+  "steps": "1. Step one\\n2. Step two"
+}
+cookTime is total minutes. onePot true if one pan/pot/tray. calories is estimated kcal per serving (integer).`
+    );
+    const r = safeParseJSON(raw);
+    if (r.error || !r.name) throw new Error(r.error || 'Could not find a recipe on that page.');
+
+    const recipe = {
+      id: 'r_' + Date.now(),
+      name: r.name,
+      category: r.category || 'Other',
+      serves: r.serves || '4',
+      desc: r.desc || '',
+      steps: r.steps || '',
+      ingredients: r.ingredients || [],
+      cookTime: r.cookTime || null,
+      calories: r.calories || null,
+      onePot: !!r.onePot,
+    };
+    state.recipes.push(recipe);
+    await apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) });
+    closeModal('url-import-modal');
+    applyRecipeFilters();
+    updateBadges();
+    setTimeout(() => viewRecipe(recipe.id), 200);
+  } catch(e) {
+    showUrlImportError(e.message || 'Import failed. Try a different URL.');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔗 Import';
+  }
+}
+
+function showUrlImportError(msg) {
+  const el = document.getElementById('url-import-error');
+  el.textContent = msg; el.style.display = 'block';
 }
 
 async function aiSuggestDay(dayIndex) {
@@ -1480,6 +2142,157 @@ Prioritise recipes from the catalog. Vary types of food.`
   }
 }
 
+// ── Cost helpers ──────────────────────────────────────────────────────────────
+function calcTotalCost(recipe) {
+  const ings = recipe.ingredients || [];
+  if (!ings.some(i => i.cost)) return 0;
+  return ings.reduce((sum, i) => sum + (i.cost ? Number(i.cost) : 0), 0);
+}
+
+// ── AI Update All Costs ───────────────────────────────────────────────────────
+async function aiUpdateAllCosts() {
+  if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
+  const btn = document.getElementById('ai-costs-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Fetching costs…';
+
+  const BATCH = 5; // smaller batches — cost data is more detailed per ingredient
+  let updated = 0;
+  try {
+    for (let i = 0; i < state.recipes.length; i += BATCH) {
+      const batch = state.recipes.slice(i, i + BATCH);
+
+      const recipeList = batch.map(r => ({
+        id: r.id,
+        name: r.name,
+        serves: r.serves || '4',
+        ingredients: (r.ingredients || []).map(ing => ({
+          name: ing.name,
+          qty: ing.qty || '',
+          unit: ing.unit || '',
+        })),
+      }));
+
+      const raw = await callClaude(
+        'You are a UK grocery pricing assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
+        `Estimate the cost in GBP (£) for each ingredient in each recipe, based on typical Sainsbury\'s supermarket prices.
+The cost should represent the actual amount USED in the recipe (not the whole pack price).
+For example: 400g chopped tomatoes tin ≈ £0.45, 500g beef mince ≈ £3.50, 1 onion ≈ £0.20, etc.
+
+Return a JSON array — one entry per recipe — with ingredient costs:
+[
+  {
+    "id": "recipe_id",
+    "ingredients": [
+      {"name": "ingredient name", "cost": 0.45}
+    ]
+  }
+]
+
+"cost" is a number in GBP to 2 decimal places representing the quantity used.
+
+Recipes to price:
+${JSON.stringify(recipeList)}`
+      );
+
+      const results = safeParseJSON(raw);
+      if (!Array.isArray(results)) throw new Error('Unexpected AI response');
+
+      const saves = [];
+      results.forEach(res => {
+        if (!res.id || !Array.isArray(res.ingredients)) return;
+        const recipe = state.recipes.find(r => r.id === res.id);
+        if (!recipe) return;
+
+        // Merge costs into ingredients by name match
+        res.ingredients.forEach(priced => {
+          const ing = recipe.ingredients.find(i =>
+            i.name.toLowerCase() === priced.name.toLowerCase()
+          );
+          if (ing && priced.cost !== undefined) {
+            ing.cost = Number(priced.cost);
+          }
+        });
+        updated++;
+        saves.push(apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) }));
+      });
+      await Promise.all(saves);
+
+      const done = Math.min(i + BATCH, state.recipes.length);
+      btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length} done…`;
+    }
+
+    applyRecipeFilters();
+    renderWeek();
+    btn.innerHTML = `✓ ${updated} recipes priced`;
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = '💷 AI Update Costs'; }, 2500);
+  } catch(e) {
+    alert('Could not update costs: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '💷 AI Update Costs';
+  }
+}
+
+// ── AI Update All Calories ───────────────────────────────────────────────────
+async function aiUpdateAllCalories() {
+  if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
+  const btn = document.getElementById('ai-calories-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Estimating calories…';
+
+  // Process in batches of 10 to stay within token limits
+  const BATCH = 10;
+  let updated = 0;
+  try {
+    for (let i = 0; i < state.recipes.length; i += BATCH) {
+      const batch = state.recipes.slice(i, i + BATCH);
+      const recipeList = batch.map(r => ({
+        id: r.id,
+        name: r.name,
+        serves: r.serves || '4',
+        ingredients: (r.ingredients || []).map(ing => `${ing.qty || ''} ${ing.unit || ''} ${ing.name}`.trim()).join(', '),
+      }));
+
+      const raw = await callClaude(
+        'You are a nutritionist assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
+        `Estimate the calories per serving for each of these recipes based on the ingredients listed.
+Return a JSON array in the same order with one entry per recipe:
+[{"id":"...","calories":550}]
+"calories" is an integer estimate of kcal per serving. Use realistic estimates for home cooking.
+
+Recipes:
+${JSON.stringify(recipeList)}`
+      );
+      const results = safeParseJSON(raw);
+      if (!Array.isArray(results)) throw new Error('Unexpected AI response');
+
+      const saves = [];
+      results.forEach(res => {
+        if (!res.id || !res.calories) return;
+        const recipe = state.recipes.find(r => r.id === res.id);
+        if (!recipe) return;
+        recipe.calories = Number(res.calories);
+        updated++;
+        saves.push(apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) }));
+      });
+      await Promise.all(saves);
+
+      // Update progress
+      const done = Math.min(i + BATCH, state.recipes.length);
+      btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length} done…`;
+    }
+
+    applyRecipeFilters();
+    renderWeek(); // refresh calorie badges on planner
+    btn.innerHTML = `✓ ${updated} recipes updated`;
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔥 AI Update Calories'; }, 2500);
+  } catch(e) {
+    alert('Could not update calories: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '🔥 AI Update Calories';
+  }
+}
+
 async function aiGenerateRecipe() {
   const name = document.getElementById('rec-name').value.trim();
   if (!name) { alert('Enter a recipe name first.'); return; }
@@ -1491,16 +2304,20 @@ async function aiGenerateRecipe() {
       'You are a recipe assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
       `Generate a complete recipe for: "${name}"
 Return JSON with exactly these keys:
-{"category":"Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","ingredients":[{"name":"","qty":"","unit":""}],"steps":"1. ...\n2. ..."}`
+{"category":"Pasta|Meat|Fish|Vegetarian|Curry|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","cookTime":30,"onePot":false,"calories":550,"ingredients":[{"name":"","qty":"","unit":""}],"steps":"1. ...\n2. ..."}
+cookTime is total minutes (integer). onePot true if one pan/pot/tray. calories is estimated kcal per serving (integer).`
     );
     const r = safeParseJSON(raw);
     if (r.category) {
       const catEl = document.getElementById('rec-cat');
       for (const o of catEl.options) { if (o.value === r.category) { catEl.value = r.category; break; } }
     }
-    if (r.serves)  document.getElementById('rec-serves').value = r.serves;
-    if (r.desc)    document.getElementById('rec-desc').value   = r.desc;
-    if (r.steps)   document.getElementById('rec-steps').value  = r.steps;
+    if (r.serves)   document.getElementById('rec-serves').value   = r.serves;
+    if (r.desc)     document.getElementById('rec-desc').value     = r.desc;
+    if (r.steps)    document.getElementById('rec-steps').value    = r.steps;
+    if (r.cookTime) document.getElementById('rec-cooktime').value = r.cookTime;
+    if (r.calories) document.getElementById('rec-calories').value = r.calories;
+    if (r.onePot !== undefined) document.getElementById('rec-onepot').checked = !!r.onePot;
     if (r.ingredients) {
       document.getElementById('rec-ingredients-container').innerHTML = '';
       recIngCount = 0;
