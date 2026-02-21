@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MealFlow — Weekly Meal Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f0e8;
+  --surface: #faf7f2;
+  --card: #ffffff;
+  --border: #e2d9cc;
+  --accent: #b5763a;
+  --accent2: #c45e2e;
+  --text: #2c2416;
+  --muted: #8a7968;
+  --green: #4a8c65;
+  --red: #b04040;
+  --blue: #3a6fa0;
+  --radius: 12px;
+  --font-head: 'Playfair Display', serif;
+  --font-body: 'DM Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); min-height: 100vh; overflow-x: hidden; }
+nav { display: flex; align-items: center; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; padding: 0 1.5rem; }
+.logo { font-family: var(--font-head); font-size: 1.4rem; font-weight: 900; color: var(--accent); padding: 1rem 1.5rem 1rem 0; border-right: 1px solid var(--border); margin-right: 1rem; white-space: nowrap; }
+.nav-tabs { display: flex; flex: 1; overflow-x: auto; }
+.nav-tab { padding: 1rem 1.2rem; cursor: pointer; color: var(--muted); font-size: 0.85rem; font-weight: 500; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; }
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+main { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+.page { display: none; }
+.page.active { display: block; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; }
+.card-title { font-family: var(--font-head); font-size: 1.1rem; color: var(--accent); margin-bottom: 1rem; }
+.btn { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-family: var(--font-body); font-size: 0.85rem; font-weight: 500; transition: all 0.2s; text-decoration: none; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: #9e6228; }
+.btn-secondary { background: #ede4d8; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: #dfd4c3; }
+.btn-danger { background: var(--red); color: white; }
+.btn-sm { padding: 0.3rem 0.7rem; font-size: 0.78rem; }
+.btn-icon { padding: 0.4rem; background: #ede4d8; border: none; border-radius: 6px; cursor: pointer; color: var(--text); font-size: 0.9rem; transition: all 0.2s; }
+.btn-icon:hover { background: var(--red); color: white; }
+input, select, textarea { background: var(--surface); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 0.5rem 0.75rem; font-family: var(--font-body); font-size: 0.85rem; width: 100%; outline: none; transition: border 0.2s; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 0.3rem; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.form-group { margin-bottom: 0.75rem; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+.badge { display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+.badge-green { background: rgba(106,177,135,0.2); color: var(--green); }
+.badge-orange { background: rgba(224,123,58,0.2); color: var(--accent2); }
+.badge-blue { background: rgba(90,143,196,0.2); color: var(--blue); }
+.badge-red { background: rgba(196,97,90,0.2); color: var(--red); }
+.badge-yellow { background: rgba(232,197,71,0.2); color: var(--accent); }
+.week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.75rem; }
+.day-col { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.day-header { background: var(--surface); padding: 0.6rem 0.8rem; font-size: 0.8rem; font-weight: 600; color: var(--accent); border-bottom: 1px solid var(--border); text-align: center; }
+.meal-slot { padding: 0.6rem; border-bottom: 1px solid var(--border); min-height: 80px; }
+.meal-slot:last-child { border-bottom: none; }
+.meal-slot-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+.meal-card-mini { background: var(--surface); border-radius: 6px; padding: 0.4rem 0.5rem; font-size: 0.72rem; cursor: pointer; position: relative; border: 1px solid var(--border); }
+.meal-card-mini:hover { border-color: var(--accent); }
+.meal-card-mini .m-name { color: var(--text); line-height: 1.3; margin-bottom: 0.2rem; padding-right: 1rem; }
+.meal-card-mini .m-meta { color: var(--muted); font-size: 0.65rem; }
+.remove-meal { position: absolute; top: 2px; right: 2px; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 0.7rem; padding: 2px; }
+.remove-meal:hover { color: var(--red); }
+.add-meal-btn { width: 100%; background: none; border: 1px dashed var(--border); border-radius: 6px; color: var(--muted); font-size: 0.72rem; padding: 0.4rem; cursor: pointer; transition: all 0.2s; }
+.add-meal-btn:hover { border-color: var(--accent); color: var(--accent); }
+.recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+.recipe-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; cursor: pointer; transition: all 0.2s; }
+.recipe-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.rc-title { font-family: var(--font-head); font-size: 1rem; color: var(--text); margin-bottom: 0.5rem; }
+.rc-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+.rc-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+.rc-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+.pantry-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem; }
+.pantry-item { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; }
+.pi-name { font-size: 0.85rem; }
+.pi-qty { font-size: 0.75rem; color: var(--muted); }
+.shop-section { margin-bottom: 1.5rem; }
+.shop-section-title { font-family: var(--font-head); font-size: 1rem; color: var(--accent2); margin-bottom: 0.75rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
+.shop-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.6rem 0.75rem; background: var(--card); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.4rem; }
+.shop-item.checked { opacity: 0.5; }
+.shop-item.checked .si-name { text-decoration: line-through; }
+.shop-item input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; flex-shrink: 0; }
+.si-name { flex: 1; font-size: 0.85rem; }
+.si-qty { font-size: 0.78rem; color: var(--muted); }
+.si-cost { font-size: 0.78rem; color: var(--green); font-weight: 600; margin-left: auto; }
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(44,36,22,0.5); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+.modal-overlay.active { display: flex; }
+.modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; max-width: 700px; width: 90%; max-height: 85vh; overflow-y: auto; position: relative; }
+.modal-title { font-family: var(--font-head); font-size: 1.4rem; color: var(--accent); margin-bottom: 1.25rem; }
+.modal-close { position: absolute; top: 1rem; right: 1rem; background: var(--border); border: none; color: var(--text); border-radius: 6px; padding: 0.3rem 0.6rem; cursor: pointer; font-size: 0.85rem; }
+.filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.25rem; align-items: center; }
+.filter-chip { padding: 0.35rem 0.8rem; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.78rem; cursor: pointer; transition: all 0.2s; user-select: none; }
+.filter-chip.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.filter-chip:hover:not(.active) { border-color: var(--muted); color: var(--text); }
+.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; text-align: center; }
+.stat-val { font-family: var(--font-head); font-size: 1.8rem; color: var(--accent); }
+.stat-label { font-size: 0.75rem; color: var(--muted); margin-top: 0.2rem; }
+.ingredient-list { list-style: none; }
+.ingredient-list li { padding: 0.4rem 0; border-bottom: 1px solid var(--border); font-size: 0.85rem; display: flex; justify-content: space-between; }
+.ingredient-list li:last-child { border: none; }
+.step-list { counter-reset: steps; list-style: none; }
+.step-list li { counter-increment: steps; padding: 0.75rem 0 0.75rem 3rem; position: relative; border-bottom: 1px dashed var(--border); font-size: 0.85rem; line-height: 1.5; }
+.step-list li::before { content: counter(steps); position: absolute; left: 0; width: 28px; height: 28px; background: var(--accent); color: #000; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; top: 0.65rem; }
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 0.75rem 1.25rem; font-size: 0.85rem; z-index: 9999; transform: translateY(100px); opacity: 0; transition: all 0.3s; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.planner-toolbar { display: flex; gap: 0.75rem; margin-bottom: 1.25rem; align-items: center; flex-wrap: wrap; }
+.planner-toolbar h2 { font-family: var(--font-head); font-size: 1.5rem; color: var(--text); margin-right: auto; }
+.week-cost { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.85rem; }
+.week-cost span { color: var(--accent); font-weight: 600; }
+.tag { display: inline-block; padding: 0.15rem 0.4rem; border-radius: 3px; font-size: 0.68rem; background: var(--border); color: var(--muted); }
+.text-muted { color: var(--muted); font-size: 0.82rem; }
+.mb-2 { margin-bottom: 1rem; }
+.w-full { width: 100%; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); z-index: 200; padding: 0 0.25rem; padding-bottom: env(safe-area-inset-bottom); }
+.bottom-nav-inner { display: flex; justify-content: space-around; }
+.bottom-nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0.2rem; padding: 0.6rem 0.25rem; background: none; border: none; color: var(--muted); font-family: var(--font-body); font-size: 0.6rem; font-weight: 500; cursor: pointer; transition: color 0.2s; }
+.bottom-nav-btn .bnb-icon { font-size: 1.3rem; line-height: 1; }
+.bottom-nav-btn.active { color: var(--accent); }
+.bottom-nav-btn.active .bnb-icon { filter: drop-shadow(0 0 4px rgba(232,197,71,0.5)); }
+
+/* ── PAGE HEADER ── */
+.page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.25rem; flex-wrap: wrap; gap: 0.75rem; }
+.page-header h2 { font-family: var(--font-head); font-size: 1.5rem; }
+.page-header-actions { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; }
+
+/* ── PLANNER DAY TABS (mobile) ── */
+.day-tabs { display: none; overflow-x: auto; gap: 0.4rem; margin-bottom: 1rem; padding-bottom: 0.25rem; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.day-tabs::-webkit-scrollbar { display: none; }
+.day-tab-btn { flex-shrink: 0; padding: 0.4rem 0.9rem; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.8rem; font-weight: 500; cursor: pointer; white-space: nowrap; transition: all 0.2s; }
+.day-tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Mobile week view toggle */
+.mobile-view-toggle { display: none; gap: 0.4rem; margin-bottom: 0.75rem; }
+.view-toggle-btn { flex: 1; padding: 0.45rem 0.75rem; border-radius: 20px; border: 1px solid var(--border); background: var(--card); color: var(--muted); font-size: 0.78rem; font-weight: 500; cursor: pointer; text-align: center; transition: all 0.2s; }
+.view-toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Week overview on mobile */
+.week-overview-mobile { display: none; }
+.week-overview-mobile.visible { display: block; }
+.wom-day { background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 0.75rem; overflow: hidden; }
+.wom-day-header { background: var(--surface); padding: 0.5rem 0.85rem; font-size: 0.82rem; font-weight: 700; color: var(--accent); border-bottom: 1px solid var(--border); }
+.wom-meals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.wom-meal { padding: 0.5rem 0.6rem; border-right: 1px solid var(--border); }
+.wom-meal:last-child { border-right: none; }
+.wom-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.25rem; }
+.wom-name { font-size: 0.72rem; color: var(--text); line-height: 1.3; }
+
+/* ── CONFIRM PANTRY STRIP ── */
+.confirm-pantry-bar { position: sticky; bottom: 0; left: 0; right: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 0.75rem 1rem; display: none; gap: 0.75rem; align-items: center; z-index: 50; }
+.confirm-pantry-bar.visible { display: flex; }
+
+@media(max-width: 900px) {
+  .week-grid { grid-template-columns: repeat(4, 1fr); }
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+  .grid-2 { grid-template-columns: 1fr; }
+}
+
+@media(max-width: 640px) {
+  /* Nav: hide top tabs, show bottom nav */
+  nav { padding: 0 1rem; }
+  .logo { font-size: 1.1rem; padding: 0.75rem 1rem 0.75rem 0; }
+  .nav-tabs { display: none; }
+  .bottom-nav { display: block; }
+  main { padding: 1rem 0.85rem; padding-bottom: 5rem; }
+
+  /* Planner: day tabs + single-day view */
+  .planner-toolbar h2 { font-size: 1.2rem; }
+  .planner-toolbar { gap: 0.5rem; margin-bottom: 0.75rem; }
+  .mobile-view-toggle { display: flex; }
+  .week-grid { grid-template-columns: 1fr; gap: 0.5rem; }
+  .week-grid > .day-col { display: none; }
+  .week-grid > .day-col.mobile-active { display: block; }
+  .day-tabs { display: flex; }
+  .week-cost { font-size: 0.78rem; }
+
+  /* Recipe cards */
+  .recipes-grid { grid-template-columns: 1fr; }
+  .rc-actions { flex-wrap: wrap; }
+
+  /* Pantry */
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .stat-val { font-size: 1.4rem; }
+  .pantry-grid { grid-template-columns: 1fr 1fr; }
+
+  /* Shopping */
+  .shop-item { gap: 0.5rem; padding: 0.55rem 0.6rem; }
+  .si-qty { display: none; }
+
+  /* Modals */
+  .modal { width: 96%; max-height: 90vh; padding: 1.1rem; border-radius: 12px; }
+  .modal-title { font-size: 1.1rem; }
+  .form-row { grid-template-columns: 1fr; gap: 0.5rem; }
+  .grid-2 { grid-template-columns: 1fr; }
+
+  /* Page headers */
+  .page-header { flex-direction: column; align-items: flex-start; }
+  .page-header-actions { width: 100%; }
+
+  /* Planner toolbar buttons wrap nicely */
+  .planner-toolbar .btn { font-size: 0.78rem; padding: 0.4rem 0.7rem; }
+
+  /* Confirm pantry bar bigger tap targets */
+  .confirm-pantry-bar { padding-bottom: calc(0.75rem + env(safe-area-inset-bottom)); }
+}
+
+@media print {
+  nav, .planner-toolbar, .btn, .btn-icon, .modal-overlay, .bottom-nav, .confirm-pantry-bar { display: none !important; }
+  body { background: white; color: black; }
+  .shop-item { border-color: #ccc; }
+}
+</style>
+</head>
+<body>
+<nav>
+  <div class="logo">🍽 MealFlow</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('planner',this)">📅 Weekly Planner</button>
+    <button class="nav-tab" onclick="showPage('recipes',this)">📖 Recipes</button>
+    <button class="nav-tab" onclick="showPage('pantry',this)">🥫 Pantry</button>
+    <button class="nav-tab" onclick="showPage('shopping',this)">🛒 Shopping List</button>
+  </div>
+</nav>
+
+<!-- MOBILE BOTTOM NAV -->
+<div class="bottom-nav">
+  <div class="bottom-nav-inner">
+    <button class="bottom-nav-btn active" id="bnb-planner" onclick="showPage('planner')">
+      <span class="bnb-icon">📅</span>Planner
+    </button>
+    <button class="bottom-nav-btn" id="bnb-recipes" onclick="showPage('recipes')">
+      <span class="bnb-icon">📖</span>Recipes
+    </button>
+    <button class="bottom-nav-btn" id="bnb-pantry" onclick="showPage('pantry')">
+      <span class="bnb-icon">🥫</span>Pantry
+    </button>
+    <button class="bottom-nav-btn" id="bnb-shopping" onclick="showPage('shopping')">
+      <span class="bnb-icon">🛒</span>Shopping
+    </button>
+  </div>
+</div>
+<main>
+
+<!-- PLANNER -->
+<div id="page-planner" class="page active">
+  <div class="planner-toolbar">
+    <h2>Weekly Meal Plan <span style="font-size:0.85rem;font-weight:400;color:var(--muted);">— for 2 people</span></h2>
+    <div class="week-cost">Week: <span id="weekCost">£0.00</span> · <span id="weekCals">0</span> kcal</div>
+    <button class="btn btn-secondary btn-sm" onclick="clearWeek()">🗑 Clear</button>
+    <button class="btn btn-primary btn-sm" onclick="surpriseMe()">✨ Surprise!</button>
+    <button class="btn btn-secondary btn-sm" onclick="generateShoppingList()">🛒 Shopping List</button>
+  </div>
+  <!-- Mobile view toggle -->
+  <div class="mobile-view-toggle" id="mobileViewToggle">
+    <button class="view-toggle-btn active" id="vtDayBtn" onclick="setMobileView('day')">📅 Day View</button>
+    <button class="view-toggle-btn" id="vtWeekBtn" onclick="setMobileView('week')">📆 Week Overview</button>
+  </div>
+  <!-- Day tabs for mobile single-day view -->
+  <div class="day-tabs" id="dayTabs"></div>
+  <div class="week-grid" id="weekGrid"></div>
+  <!-- Week overview for mobile -->
+  <div class="week-overview-mobile" id="weekOverviewMobile"></div>
+</div>
+
+<!-- RECIPES -->
+<div id="page-recipes" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:1rem;">
+    <h2 style="font-family:var(--font-head);font-size:1.5rem;">Recipe Library</h2>
+    <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <button class="btn btn-secondary" onclick="showModal('addRecipeModal')">+ Add Recipe</button>
+      <button class="btn btn-secondary" onclick="showModal('importUrlModal')">🔗 Import URL</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <input type="text" id="recipeSearch" placeholder="🔍 Search recipes..." style="width:180px;" oninput="renderRecipes()">
+    <select id="filterMealType" onchange="renderRecipes()" style="width:120px;">
+      <option value="">All Meals</option>
+      <option>Breakfast</option><option>Lunch</option><option>Dinner</option><option>Snack</option><option>Dessert</option>
+    </select>
+    <select id="filterCountry" onchange="renderRecipes()" style="width:130px;"><option value="">All Cuisines</option></select>
+    <select id="sortRecipes" onchange="renderRecipes()" style="width:130px;">
+      <option value="">Sort By</option>
+      <option value="price">Price ↑</option>
+      <option value="price-desc">Price ↓</option>
+      <option value="calories">Calories ↑</option>
+      <option value="time">Time ↑</option>
+      <option value="ingredients">Least Ingredients</option>
+      <option value="name">Name A-Z</option>
+    </select>
+    <div class="filter-chip" onclick="toggleFilter(this,'onePot')">🥘 One-Pot</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'quick')">⚡ Under 30 min</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'budget')">💰 Budget (&lt;£4)</div>
+    <div class="filter-chip" onclick="toggleFilter(this,'inPantry')">🥫 Can Make Now</div>
+  </div>
+  <div id="recipeCount" class="text-muted mb-2"></div>
+  <div class="recipes-grid" id="recipesGrid"></div>
+</div>
+
+<!-- PANTRY -->
+<div id="page-pantry" class="page">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;">
+    <h2 style="font-family:var(--font-head);font-size:1.5rem;">My Pantry</h2>
+    <button class="btn btn-primary" onclick="showModal('addPantryModal')">+ Add Item</button>
+  </div>
+  <div class="stats-row" id="pantryStats"></div>
+  <div id="pantryGrid" class="pantry-grid"></div>
+</div>
+
+<!-- SHOPPING -->
+<div id="page-shopping" class="page">
+  <div class="page-header">
+    <h2>Shopping List <span style="font-size:0.85rem;font-weight:400;color:var(--muted);">— for 2 people</span></h2>
+    <div class="page-header-actions">
+      <div class="week-cost">Total: <span id="shopTotal">£0.00</span></div>
+      <button class="btn btn-secondary btn-sm" onclick="checkAll()">✅ Check All</button>
+      <button class="btn btn-secondary btn-sm" onclick="uncheckAll()">↩ Uncheck All</button>
+      <button class="btn btn-secondary btn-sm" onclick="removeChecked()">🗑 Remove Checked</button>
+      <button class="btn btn-secondary btn-sm" onclick="showModal('addShopItemModal')">+ Add Item</button>
+      <button class="btn btn-secondary btn-sm" onclick="printShoppingList()">🖨 Print</button>
+    </div>
+  </div>
+  <div id="shoppingList"></div>
+  <!-- Sticky confirm bar — shown when items are checked -->
+  <div class="confirm-pantry-bar" id="confirmPantryBar">
+    <span style="flex:1;font-size:0.85rem;color:var(--muted);">Tick items as you shop, then confirm to add to pantry.</span>
+    <span id="checkedCount" style="font-size:0.82rem;color:var(--accent);font-weight:600;white-space:nowrap;"></span>
+    <button class="btn btn-primary" onclick="confirmAllChecked()">✅ Add Checked to Pantry</button>
+  </div>
+</div>
+
+</main>
+
+<div id="toast" class="toast"></div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="addMealModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addMealModal')">✕</button>
+    <div class="modal-title">Add Meal</div>
+    <div class="form-group">
+      <label>Search recipes</label>
+      <input type="text" id="mealSearchInput" placeholder="Type to search..." oninput="filterMealSearch()">
+    </div>
+    <div id="mealSearchResults" style="max-height:420px;overflow-y:auto;display:grid;gap:0.5rem;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="recipeDetailModal">
+  <div class="modal" style="max-width:780px;">
+    <button class="modal-close" onclick="closeModal('recipeDetailModal')">✕</button>
+    <div id="recipeDetailContent"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addRecipeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('addRecipeModal')">✕</button>
+    <div class="modal-title">Add New Recipe</div>
+    <div class="form-row">
+      <div class="form-group"><label>Recipe Name *</label><input type="text" id="nr-name" placeholder="e.g. Spaghetti Bolognese"></div>
+      <div class="form-group"><label>Meal Type</label><select id="nr-type"><option>Dinner</option><option>Lunch</option><option>Breakfast</option><option>Snack</option><option>Dessert</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cuisine / Country</label><input type="text" id="nr-country" placeholder="e.g. Italian"></div>
+      <div class="form-group"><label>Estimated Cost (£)</label><input type="number" id="nr-cost" placeholder="4.50" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Prep + Cook Time (mins)</label><input type="number" id="nr-time" placeholder="30"></div>
+      <div class="form-group"><label>Calories per portion</label><input type="number" id="nr-cals" placeholder="450"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Servings</label><input type="number" id="nr-servings" value="4"></div>
+      <div class="form-group"><label>One-pot meal?</label><select id="nr-onepot"><option value="0">No</option><option value="1">Yes</option></select></div>
+    </div>
+    <div class="form-group"><label>Ingredients (one per line: "qty ingredient, £cost")</label><textarea id="nr-ingredients" rows="5" placeholder="400g spaghetti, £0.80&#10;500g beef mince, £2.50&#10;1 tin chopped tomatoes, £0.40"></textarea></div>
+    <div class="form-group"><label>Method / Steps (one per line)</label><textarea id="nr-steps" rows="5" placeholder="Cook pasta according to instructions&#10;Brown the mince..."></textarea></div>
+    <div class="form-group"><label>Description</label><textarea id="nr-desc" rows="2" placeholder="A classic hearty pasta dish..."></textarea></div>
+    <button class="btn btn-primary w-full" onclick="saveNewRecipe()">Save Recipe</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="importUrlModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('importUrlModal')">✕</button>
+    <div class="modal-title">Import Recipe from URL</div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Paste a recipe URL and we'll guide you through adding it to your collection.</p>
+    <div class="form-group"><label>Recipe URL</label><input type="url" id="importUrl" placeholder="https://www.bbcgoodfood.com/recipes/..."></div>
+    <button class="btn btn-primary" onclick="importFromUrl()">Import Recipe</button>
+    <div id="importPreview" style="margin-top:1rem;"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addPantryModal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="closeModal('addPantryModal')">✕</button>
+    <div class="modal-title">Add Pantry Item</div>
+    <div class="form-group"><label>Item Name</label><input type="text" id="pi-name" placeholder="e.g. Olive Oil"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantity</label><input type="text" id="pi-qty" placeholder="e.g. 500ml"></div>
+      <div class="form-group"><label>Category</label><select id="pi-cat"><option>Dry Goods & Pasta</option><option>Rice & Grains</option><option>Baking & Flour</option><option>Tins & Jars</option><option>Dairy & Cheese</option><option>Eggs</option><option>Meat & Poultry</option><option>Fish & Seafood</option><option>Fresh Veg</option><option>Fresh Fruit</option><option>Herbs & Spices</option><option>Condiments & Sauces</option><option>Oils & Vinegar</option><option>Frozen</option><option>Bakery & Bread</option><option>Drinks & Alcohol</option><option>Sweet Treats & Snacks</option><option>Household</option></select></div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="addPantryItem()">Add to Pantry</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="addShopItemModal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="closeModal('addShopItemModal')">✕</button>
+    <div class="modal-title">Add to Shopping List</div>
+    <p style="color:var(--muted);font-size:0.82rem;margin-bottom:1rem;">Just type the item name — we'll automatically work out the quantity, price and supermarket section for you.</p>
+    <div class="form-group"><label>Item Name</label><input type="text" id="si-name" placeholder="e.g. Chicken Breast" oninput="previewShopItem()" onkeydown="if(event.key==='Enter')addManualShopItem()"></div>
+    <div id="si-preview" style="display:none;margin-bottom:0.75rem;padding:0.6rem 0.75rem;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:0.8rem;color:var(--muted);"></div>
+    <button class="btn btn-primary w-full" onclick="addManualShopItem()">Add Item</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editRecipeModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('editRecipeModal')">✕</button>
+    <div class="modal-title">Edit Recipe</div>
+    <input type="hidden" id="er-id">
+    <div class="form-row">
+      <div class="form-group"><label>Recipe Name *</label><input type="text" id="er-name"></div>
+      <div class="form-group"><label>Meal Type</label><select id="er-type"><option>Dinner</option><option>Lunch</option><option>Breakfast</option><option>Snack</option><option>Dessert</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Cuisine / Country</label><input type="text" id="er-country"></div>
+      <div class="form-group"><label>Estimated Cost (£)</label><input type="number" id="er-cost" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Prep + Cook Time (mins)</label><input type="number" id="er-time"></div>
+      <div class="form-group"><label>Calories per portion</label><input type="number" id="er-cals"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>Servings</label><input type="number" id="er-servings"></div>
+      <div class="form-group"><label>One-pot meal?</label><select id="er-onepot"><option value="0">No</option><option value="1">Yes</option></select></div>
+    </div>
+    <div class="form-group"><label>Ingredients (one per line: "qty ingredient, £cost")</label><textarea id="er-ingredients" rows="6"></textarea></div>
+    <div class="form-group"><label>Method / Steps (one per line)</label><textarea id="er-steps" rows="5"></textarea></div>
+    <div class="form-group"><label>Description</label><textarea id="er-desc" rows="2"></textarea></div>
+    <button class="btn btn-primary w-full" onclick="saveEditedRecipe()">Save Changes</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="buyQtyModal">
+  <div class="modal" style="max-width:380px;">
+    <button class="modal-close" onclick="closeModal('buyQtyModal')">✕</button>
+    <div class="modal-title">Confirm Purchase</div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">Adjust the quantity you're actually buying — this will be added to your pantry.</p>
+    <input type="hidden" id="bq-id">
+    <div class="form-group"><label>Item</label><input type="text" id="bq-name" readonly style="opacity:0.7;"></div>
+    <div class="form-row">
+      <div class="form-group"><label>Quantity / Amount</label><input type="text" id="bq-qty" placeholder="e.g. 500g"></div>
+      <div class="form-group"><label>Cost Paid (£)</label><input type="number" id="bq-cost" step="0.01"></div>
+    </div>
+    <button class="btn btn-primary w-full" onclick="confirmBuyItem()">✅ Add to Pantry</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="mealMadeModal">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" onclick="closeModal('mealMadeModal')">✕</button>
+    <div class="modal-title">🍽 Meal Made!</div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1rem;">The following ingredients will be subtracted from your pantry:</p>
+    <div id="mealMadeIngredients" style="margin-bottom:1rem;max-height:250px;overflow-y:auto;"></div>
+    <button class="btn btn-primary w-full" onclick="confirmMealMade()">Confirm & Update Pantry</button>
+  </div>
+</div>
+
+
+<script>
+const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const MEAL_TYPES = ['Breakfast','Lunch','Dinner'];
+const SHOP_SECTIONS = ['🥩 Meat & Fish','🥛 Dairy & Eggs','🥦 Fresh Fruit','🥦 Fresh Veg','🥖 Bakery & Bread','🥫 Tins & Jars','🌾 Dry Goods & Pasta','🍚 Rice & Grains','🧊 Frozen','🧃 Drinks & Alcohol','🧴 Condiments & Sauces','🌶 Herbs & Spices','🫙 Baking & Flour','🧹 Household','🧁 Sweet Treats'];
+</script>
+<script>
+const DEFAULT_RECIPES = [
+  { id:1, name:"Full English Breakfast", type:"Breakfast", country:"British", cost:3.50, time:25, cals:650, servings:2, onePot:true, desc:"Classic British fry-up with eggs, bacon, sausages, beans and toast.", ingredients:[{i:"Streaky Bacon",q:"4 rashers",c:1.20,s:"🥩 Meat & Fish"},{i:"Pork Sausages",q:"4",c:1.00,s:"🥩 Meat & Fish"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Baked Beans",q:"1 tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Bread",q:"2 slices",c:0.20,s:"🥖 Bakery"},{i:"Tomatoes",q:"2",c:0.30,s:"🥦 Fruit & Veg"},{i:"Mushrooms",q:"100g",c:0.40,s:"🥦 Fruit & Veg"}], steps:["Grill bacon and sausages for 15 mins","Fry eggs in a pan","Heat beans in a pan","Toast bread","Serve everything together"] },
+  { id:2, name:"Avocado Toast with Poached Eggs", type:"Breakfast", country:"Modern British", cost:2.80, time:15, cals:420, servings:2, onePot:false, desc:"Creamy smashed avocado on sourdough with perfectly poached eggs.", ingredients:[{i:"Sourdough Bread",q:"2 thick slices",c:0.50,s:"🥖 Bakery"},{i:"Avocado",q:"1 large",c:1.00,s:"🥦 Fruit & Veg"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Lemon",q:"½",c:0.25,s:"🥦 Fruit & Veg"},{i:"Chilli Flakes",q:"pinch",c:0.05,s:"🌶 Herbs & Spices"}], steps:["Toast sourdough","Mash avocado with lemon juice, salt, pepper","Poach eggs in simmering water for 3-4 mins","Top toast with avocado and poached egg","Sprinkle with chilli flakes"] },
+  { id:3, name:"Overnight Oats", type:"Breakfast", country:"British", cost:1.20, time:5, cals:380, servings:1, onePot:true, desc:"Creamy no-cook oats prepared the night before.", ingredients:[{i:"Rolled Oats",q:"80g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Milk",q:"150ml",c:0.15,s:"🥛 Dairy & Eggs"},{i:"Greek Yogurt",q:"2 tbsp",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Honey",q:"1 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Banana",q:"1",c:0.15,s:"🥦 Fruit & Veg"},{i:"Berries",q:"handful",c:0.50,s:"🥦 Fruit & Veg"}], steps:["Mix oats, milk and yogurt in a jar","Add honey and stir","Refrigerate overnight","Top with banana and berries in the morning"] },
+  { id:4, name:"Pancakes with Maple Syrup", type:"Breakfast", country:"American", cost:1.80, time:20, cals:450, servings:4, onePot:false, desc:"Fluffy American-style pancakes.", ingredients:[{i:"Plain Flour",q:"200g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Milk",q:"300ml",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Baking Powder",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Butter",q:"50g",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Maple Syrup",q:"to serve",c:0.80,s:"🧴 Condiments & Sauces"}], steps:["Mix flour, baking powder, eggs and milk to a batter","Heat butter in pan","Pour batter, cook until bubbles form, flip","Serve with maple syrup"] },
+  { id:5, name:"Shakshuka", type:"Breakfast", country:"Middle Eastern", cost:2.50, time:25, cals:380, servings:2, onePot:true, desc:"Eggs poached in spiced tomato sauce.", ingredients:[{i:"Eggs",q:"4",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Tinned Tomatoes",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Red Pepper",q:"1",c:0.60,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Cumin",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Paprika",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Bread",q:"to serve",c:0.30,s:"🥖 Bakery"}], steps:["Fry onion and pepper until soft","Add garlic and spices, cook 1 min","Add tomatoes, simmer 10 mins","Make wells, crack eggs in","Cover and cook 8 mins"] },
+  { id:6, name:"Granola with Yogurt & Berries", type:"Breakfast", country:"British", cost:2.00, time:5, cals:390, servings:2, onePot:true, desc:"Crunchy granola with creamy yogurt.", ingredients:[{i:"Granola",q:"100g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Greek Yogurt",q:"200g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Mixed Berries",q:"150g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Honey",q:"1 tsp",c:0.10,s:"🧴 Condiments & Sauces"}], steps:["Spoon yogurt into bowl","Top with granola and berries","Drizzle with honey"] },
+  { id:7, name:"French Toast", type:"Breakfast", country:"French", cost:1.80, time:15, cals:420, servings:2, onePot:true, desc:"Eggy bread with maple syrup and berries.", ingredients:[{i:"Thick Bread",q:"4 slices",c:0.40,s:"🥖 Bakery"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Milk",q:"50ml",c:0.05,s:"🥛 Dairy & Eggs"},{i:"Vanilla",q:"dash",c:0.05,s:"🧴 Condiments & Sauces"},{i:"Cinnamon",q:"pinch",c:0.05,s:"🌶 Herbs & Spices"},{i:"Butter",q:"knob",c:0.10,s:"🥛 Dairy & Eggs"},{i:"Maple Syrup",q:"to serve",c:0.40,s:"🧴 Condiments & Sauces"}], steps:["Whisk eggs, milk, vanilla, cinnamon","Dip bread in mixture","Fry in butter 2 mins each side","Serve with maple syrup"] },
+  { id:8, name:"Smoked Salmon Bagel", type:"Breakfast", country:"British", cost:3.80, time:5, cals:440, servings:1, onePot:true, desc:"New York-style bagel with cream cheese and smoked salmon.", ingredients:[{i:"Bagel",q:"1",c:0.60,s:"🥖 Bakery"},{i:"Smoked Salmon",q:"80g",c:1.80,s:"🥩 Meat & Fish"},{i:"Cream Cheese",q:"2 tbsp",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Capers",q:"1 tsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Red Onion",q:"few slices",c:0.10,s:"🥦 Fruit & Veg"}], steps:["Toast bagel","Spread cream cheese","Layer smoked salmon","Top with capers and red onion"] },
+  { id:9, name:"Classic BLT", type:"Lunch", country:"British", cost:2.20, time:10, cals:380, servings:1, onePot:true, desc:"Crispy bacon, lettuce, and tomato sandwich.", ingredients:[{i:"Bread",q:"2 slices",c:0.20,s:"🥖 Bakery"},{i:"Streaky Bacon",q:"3 rashers",c:0.90,s:"🥩 Meat & Fish"},{i:"Lettuce",q:"2 leaves",c:0.15,s:"🥦 Fruit & Veg"},{i:"Tomato",q:"1",c:0.30,s:"🥦 Fruit & Veg"},{i:"Mayonnaise",q:"1 tbsp",c:0.15,s:"🧴 Condiments & Sauces"}], steps:["Grill or fry bacon until crispy","Toast bread","Spread mayo on toast","Layer lettuce, tomato and bacon"] },
+  { id:10, name:"Caesar Salad", type:"Lunch", country:"American", cost:3.50, time:15, cals:420, servings:2, onePot:true, desc:"Crispy romaine with parmesan, croutons and Caesar dressing.", ingredients:[{i:"Romaine Lettuce",q:"1 head",c:0.80,s:"🥦 Fruit & Veg"},{i:"Parmesan",q:"40g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Croutons",q:"50g",c:0.50,s:"🥖 Bakery"},{i:"Caesar Dressing",q:"3 tbsp",c:0.60,s:"🧴 Condiments & Sauces"},{i:"Chicken Breast",q:"1",c:1.20,s:"🥩 Meat & Fish"}], steps:["Grill chicken, slice","Tear lettuce into bowl","Toss with dressing","Top with parmesan, croutons and chicken"] },
+  { id:11, name:"Tomato Soup", type:"Lunch", country:"British", cost:1.80, time:30, cals:220, servings:4, onePot:true, desc:"Rich homemade tomato soup with crusty bread.", ingredients:[{i:"Tinned Tomatoes",q:"2 x 400g tins",c:1.00,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Vegetable Stock",q:"500ml",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Cream",q:"50ml",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Bread",q:"to serve",c:0.40,s:"🥖 Bakery"}], steps:["Soften onion and garlic","Add tomatoes and stock","Simmer 20 mins","Blend until smooth","Stir in cream, season"] },
+  { id:12, name:"Greek Salad", type:"Lunch", country:"Greek", cost:3.20, time:10, cals:310, servings:2, onePot:true, desc:"Fresh Mediterranean salad with feta, olives and cucumber.", ingredients:[{i:"Tomatoes",q:"3",c:0.60,s:"🥦 Fruit & Veg"},{i:"Cucumber",q:"½",c:0.40,s:"🥦 Fruit & Veg"},{i:"Red Onion",q:"½",c:0.15,s:"🥦 Fruit & Veg"},{i:"Olives",q:"50g",c:0.80,s:"🥫 Tins & Jars"},{i:"Feta Cheese",q:"100g",c:1.20,s:"🥛 Dairy & Eggs"},{i:"Olive Oil",q:"2 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Oregano",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"}], steps:["Chop tomatoes, cucumber, onion","Combine in bowl","Top with olives and feta","Drizzle olive oil and oregano"] },
+  { id:13, name:"Chicken Wrap", type:"Lunch", country:"American", cost:3.00, time:15, cals:450, servings:2, onePot:false, desc:"Grilled chicken in a soft tortilla with salad and sauce.", ingredients:[{i:"Tortilla Wraps",q:"2",c:0.50,s:"🥖 Bakery"},{i:"Chicken Breast",q:"2",c:2.40,s:"🥩 Meat & Fish"},{i:"Lettuce",q:"handful",c:0.20,s:"🥦 Fruit & Veg"},{i:"Tomato",q:"1",c:0.30,s:"🥦 Fruit & Veg"},{i:"Sour Cream",q:"2 tbsp",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Sweet Chilli Sauce",q:"1 tbsp",c:0.20,s:"🧴 Condiments & Sauces"}], steps:["Season and grill chicken, slice","Warm tortillas","Layer chicken, salad, sour cream and sauce","Roll and serve"] },
+  { id:14, name:"Lentil Soup", type:"Lunch", country:"Middle Eastern", cost:1.50, time:35, cals:280, servings:4, onePot:true, desc:"Hearty and warming red lentil soup.", ingredients:[{i:"Red Lentils",q:"200g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Carrot",q:"2",c:0.30,s:"🥦 Fruit & Veg"},{i:"Cumin",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Turmeric",q:"½ tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Vegetable Stock",q:"1L",c:0.50,s:"🧴 Condiments & Sauces"},{i:"Lemon",q:"1",c:0.25,s:"🥦 Fruit & Veg"}], steps:["Sauté onion and carrot","Add spices, cook 1 min","Add lentils and stock","Simmer 25 mins","Blend or leave chunky, add lemon"] },
+  { id:15, name:"Baked Potato with Beans & Cheese", type:"Lunch", country:"British", cost:1.50, time:60, cals:480, servings:1, onePot:true, desc:"The ultimate British comfort jacket potato.", ingredients:[{i:"Large Potato",q:"1",c:0.40,s:"🥦 Fruit & Veg"},{i:"Baked Beans",q:"1 tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Cheddar Cheese",q:"50g",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"knob",c:0.10,s:"🥛 Dairy & Eggs"}], steps:["Bake potato at 200°C for 60 mins","Split open and add butter","Top with hot beans and grated cheese"] },
+  { id:16, name:"Tuna Pasta Salad", type:"Lunch", country:"British", cost:2.00, time:15, cals:420, servings:2, onePot:true, desc:"Simple and filling pasta salad great for meal prep.", ingredients:[{i:"Pasta",q:"200g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Tuna",q:"2 tins",c:1.20,s:"🥫 Tins & Jars"},{i:"Mayo",q:"3 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Sweetcorn",q:"1 tin",c:0.40,s:"🥫 Tins & Jars"},{i:"Spring Onions",q:"3",c:0.25,s:"🥦 Fruit & Veg"},{i:"Cucumber",q:"¼",c:0.20,s:"🥦 Fruit & Veg"}], steps:["Cook pasta, drain and cool","Mix tuna, mayo, sweetcorn, onions","Toss with pasta","Season and serve"] },
+  { id:17, name:"Halloumi Salad", type:"Lunch", country:"Greek", cost:5.00, time:15, cals:420, servings:2, onePot:true, desc:"Grilled halloumi over a fresh Mediterranean salad.", ingredients:[{i:"Halloumi",q:"250g",c:2.50,s:"🥛 Dairy & Eggs"},{i:"Mixed Leaves",q:"100g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Cherry Tomatoes",q:"200g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Cucumber",q:"½",c:0.40,s:"🥦 Fruit & Veg"},{i:"Lemon",q:"½",c:0.15,s:"🥦 Fruit & Veg"},{i:"Olive Oil",q:"2 tbsp",c:0.30,s:"🧴 Condiments & Sauces"}], steps:["Slice and grill halloumi until golden","Arrange salad","Top with halloumi","Drizzle lemon and olive oil"] },
+  { id:18, name:"Falafel & Hummus Wrap", type:"Lunch", country:"Middle Eastern", cost:3.50, time:20, cals:480, servings:2, onePot:false, desc:"Crispy falafels with creamy hummus and salad.", ingredients:[{i:"Falafel",q:"8",c:1.50,s:"🥫 Tins & Jars"},{i:"Hummus",q:"4 tbsp",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Flatbreads",q:"2",c:0.60,s:"🥖 Bakery"},{i:"Lettuce",q:"handful",c:0.20,s:"🥦 Fruit & Veg"},{i:"Tomatoes",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Tahini Sauce",q:"2 tbsp",c:0.40,s:"🧴 Condiments & Sauces"}], steps:["Heat falafels until crispy","Warm flatbreads","Spread hummus","Add falafel, salad and tahini sauce","Roll and serve"] },
+  { id:19, name:"Spaghetti Bolognese", type:"Dinner", country:"Italian", cost:4.50, time:50, cals:620, servings:4, onePot:false, desc:"Classic Italian meat sauce with spaghetti.", ingredients:[{i:"Spaghetti",q:"400g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Beef Mince",q:"500g",c:2.50,s:"🥩 Meat & Fish"},{i:"Tinned Tomatoes",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Carrot",q:"1",c:0.15,s:"🥦 Fruit & Veg"},{i:"Red Wine",q:"100ml",c:0.60,s:"🧃 Drinks"},{i:"Beef Stock",q:"200ml",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Parmesan",q:"to serve",c:0.40,s:"🥛 Dairy & Eggs"}], steps:["Fry onion, garlic and carrot until soft","Add mince, brown well","Add wine and reduce","Add tomatoes and stock","Simmer 30 mins","Serve over spaghetti with parmesan"] },
+  { id:20, name:"Chicken Tikka Masala", type:"Dinner", country:"Indian", cost:5.50, time:45, cals:580, servings:4, onePot:false, desc:"Britain's favourite curry — creamy, rich and aromatic.", ingredients:[{i:"Chicken Breast",q:"600g",c:3.60,s:"🥩 Meat & Fish"},{i:"Tikka Masala Paste",q:"3 tbsp",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Tinned Tomatoes",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Double Cream",q:"150ml",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Ginger",q:"1 inch",c:0.15,s:"🥦 Fruit & Veg"},{i:"Basmati Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Coriander",q:"handful",c:0.30,s:"🌶 Herbs & Spices"}], steps:["Marinate chicken in yogurt and half paste 30 mins","Fry onion, garlic, ginger","Add remaining paste, cook 2 mins","Add tomatoes, simmer 15 mins","Add chicken and cream, simmer 15 mins","Serve with rice and coriander"] },
+  { id:21, name:"Fish & Chips", type:"Dinner", country:"British", cost:5.00, time:40, cals:700, servings:2, onePot:false, desc:"The classic British takeaway, made at home.", ingredients:[{i:"Cod Fillets",q:"2",c:3.00,s:"🥩 Meat & Fish"},{i:"Plain Flour",q:"150g",c:0.15,s:"🌾 Dry Goods & Pasta"},{i:"Beer or Sparkling Water",q:"150ml",c:0.50,s:"🧃 Drinks"},{i:"Potatoes",q:"600g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Oil",q:"for frying",c:0.50,s:"🧴 Condiments & Sauces"},{i:"Mushy Peas",q:"1 tin",c:0.50,s:"🥫 Tins & Jars"}], steps:["Cut potatoes into chips, parboil 5 mins","Mix flour with beer to make batter","Heat oil to 180°C","Fry chips until golden","Dip fish in batter, fry 5-6 mins until golden","Serve with mushy peas and vinegar"] },
+  { id:22, name:"Beef Chilli", type:"Dinner", country:"Mexican", cost:4.80, time:60, cals:540, servings:4, onePot:true, desc:"Spicy beef chilli with kidney beans and rice.", ingredients:[{i:"Beef Mince",q:"500g",c:2.50,s:"🥩 Meat & Fish"},{i:"Kidney Beans",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Tinned Tomatoes",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Red Pepper",q:"1",c:0.60,s:"🥦 Fruit & Veg"},{i:"Chilli Powder",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Cumin",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Beef Stock",q:"200ml",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"}], steps:["Brown mince","Add onion and pepper, soften","Add spices, cook 1 min","Add tomatoes, beans and stock","Simmer 40 mins","Serve with rice and sour cream"] },
+  { id:23, name:"Roast Chicken", type:"Dinner", country:"British", cost:7.00, time:90, cals:680, servings:4, onePot:false, desc:"Sunday roast chicken with roast potatoes and veg.", ingredients:[{i:"Whole Chicken",q:"1.5kg",c:4.00,s:"🥩 Meat & Fish"},{i:"Potatoes",q:"800g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Carrots",q:"4",c:0.40,s:"🥦 Fruit & Veg"},{i:"Butter",q:"50g",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Lemon",q:"1",c:0.25,s:"🥦 Fruit & Veg"},{i:"Thyme & Rosemary",q:"few sprigs",c:0.30,s:"🌶 Herbs & Spices"},{i:"Chicken Stock",q:"500ml",c:0.50,s:"🧴 Condiments & Sauces"}], steps:["Preheat oven 200°C","Rub chicken with butter, herbs, season","Roast 1h 20min","Parboil potatoes, roast until golden","Make gravy from juices"] },
+  { id:24, name:"Pad Thai", type:"Dinner", country:"Thai", cost:5.00, time:25, cals:560, servings:2, onePot:true, desc:"Classic Thai stir-fried noodles.", ingredients:[{i:"Rice Noodles",q:"200g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Prawns",q:"200g",c:2.50,s:"🥩 Meat & Fish"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Bean Sprouts",q:"100g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Spring Onions",q:"4",c:0.30,s:"🥦 Fruit & Veg"},{i:"Fish Sauce",q:"3 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Tamarind Paste",q:"2 tbsp",c:0.50,s:"🧴 Condiments & Sauces"},{i:"Peanuts",q:"50g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Lime",q:"1",c:0.25,s:"🥦 Fruit & Veg"}], steps:["Soak noodles in warm water","Stir-fry prawns, push aside, scramble eggs","Add noodles, sauce and bean sprouts","Toss everything together","Serve with peanuts, lime and spring onions"] },
+  { id:25, name:"Beef Tacos", type:"Dinner", country:"Mexican", cost:5.50, time:25, cals:490, servings:4, onePot:false, desc:"Street-style beef tacos with fresh toppings.", ingredients:[{i:"Beef Mince",q:"500g",c:2.50,s:"🥩 Meat & Fish"},{i:"Taco Shells",q:"8",c:1.00,s:"🥖 Bakery"},{i:"Taco Seasoning",q:"1 packet",c:0.80,s:"🌶 Herbs & Spices"},{i:"Tomatoes",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Lettuce",q:"¼",c:0.30,s:"🥦 Fruit & Veg"},{i:"Cheddar",q:"80g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Sour Cream",q:"100ml",c:0.60,s:"🥛 Dairy & Eggs"}], steps:["Brown mince with seasoning","Warm taco shells","Load with mince, cheese, tomato, lettuce","Serve with sour cream"] },
+  { id:26, name:"Vegetable Curry", type:"Dinner", country:"Indian", cost:3.20, time:35, cals:380, servings:4, onePot:true, desc:"Fragrant mixed vegetable curry with coconut milk.", ingredients:[{i:"Mixed Vegetables",q:"600g",c:1.50,s:"🥦 Fruit & Veg"},{i:"Coconut Milk",q:"400ml tin",c:1.00,s:"🥫 Tins & Jars"},{i:"Curry Paste",q:"3 tbsp",c:0.60,s:"🧴 Condiments & Sauces"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"2 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Basmati Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"}], steps:["Fry onion and garlic","Add curry paste, cook 2 mins","Add vegetables and tomatoes","Pour in coconut milk, simmer 20 mins","Serve with rice"] },
+  { id:27, name:"Beef Burger", type:"Dinner", country:"American", cost:5.50, time:20, cals:720, servings:4, onePot:false, desc:"Juicy homemade beef burgers with all the toppings.", ingredients:[{i:"Beef Mince",q:"500g",c:2.50,s:"🥩 Meat & Fish"},{i:"Burger Buns",q:"4",c:0.80,s:"🥖 Bakery"},{i:"Cheddar Cheese",q:"4 slices",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Lettuce",q:"4 leaves",c:0.20,s:"🥦 Fruit & Veg"},{i:"Tomato",q:"1",c:0.30,s:"🥦 Fruit & Veg"},{i:"Ketchup & Mustard",q:"to serve",c:0.30,s:"🧴 Condiments & Sauces"}], steps:["Shape mince into 4 patties, season","Grill or fry 3-4 mins each side","Add cheese at the end","Toast buns","Assemble with salad and sauces"] },
+  { id:28, name:"Chicken Stir Fry", type:"Dinner", country:"Chinese", cost:4.50, time:20, cals:480, servings:2, onePot:true, desc:"Quick and healthy Chinese-style stir fry.", ingredients:[{i:"Chicken Breast",q:"300g",c:1.80,s:"🥩 Meat & Fish"},{i:"Mixed Stir Fry Veg",q:"400g",c:1.20,s:"🥦 Fruit & Veg"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Oyster Sauce",q:"2 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Garlic",q:"2 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Ginger",q:"1 inch",c:0.15,s:"🥦 Fruit & Veg"},{i:"Noodles or Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"}], steps:["Cook noodles or rice","Slice chicken thin, stir-fry 3-4 mins","Add veg and stir-fry 3 mins","Add garlic, ginger and sauces","Toss and serve"] },
+  { id:29, name:"Lasagne", type:"Dinner", country:"Italian", cost:6.50, time:90, cals:680, servings:6, onePot:false, desc:"Classic layered pasta bake with rich meat sauce.", ingredients:[{i:"Beef Mince",q:"500g",c:2.50,s:"🥩 Meat & Fish"},{i:"Lasagne Sheets",q:"12",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Tinned Tomatoes",q:"400g tin",c:0.50,s:"🥫 Tins & Jars"},{i:"Milk",q:"500ml",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"50g",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Plain Flour",q:"50g",c:0.05,s:"🌾 Dry Goods & Pasta"},{i:"Cheddar",q:"100g",c:1.00,s:"🥛 Dairy & Eggs"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"}], steps:["Make meat sauce with mince, onion, tomatoes, simmer 30 mins","Make béchamel: melt butter, add flour, add milk slowly","Layer: pasta, meat, béchamel, repeat","Top with cheese","Bake 35 mins at 180°C"] },
+  { id:30, name:"Salmon with Potatoes & Asparagus", type:"Dinner", country:"British", cost:7.50, time:30, cals:520, servings:2, onePot:false, desc:"Elegant pan-fried salmon with seasonal vegetables.", ingredients:[{i:"Salmon Fillets",q:"2",c:4.00,s:"🥩 Meat & Fish"},{i:"New Potatoes",q:"400g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Asparagus",q:"200g",c:1.50,s:"🥦 Fruit & Veg"},{i:"Butter",q:"30g",c:0.25,s:"🥛 Dairy & Eggs"},{i:"Lemon",q:"1",c:0.25,s:"🥦 Fruit & Veg"},{i:"Capers",q:"1 tbsp",c:0.30,s:"🧴 Condiments & Sauces"}], steps:["Boil new potatoes 15-20 mins","Pan-fry salmon skin down 4 mins, flip 2 mins","Griddle or roast asparagus","Make lemon-caper butter","Serve together"] },
+  { id:31, name:"Mushroom Risotto", type:"Dinner", country:"Italian", cost:4.50, time:40, cals:520, servings:4, onePot:true, desc:"Creamy Italian risotto with mushrooms and parmesan.", ingredients:[{i:"Arborio Rice",q:"320g",c:1.20,s:"🌾 Dry Goods & Pasta"},{i:"Mushrooms",q:"300g",c:1.20,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"White Wine",q:"100ml",c:0.60,s:"🧃 Drinks"},{i:"Vegetable Stock",q:"1.2L",c:0.60,s:"🧴 Condiments & Sauces"},{i:"Parmesan",q:"60g",c:1.20,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"30g",c:0.25,s:"🥛 Dairy & Eggs"}], steps:["Sauté onion","Add rice, toast 2 mins","Add wine, stir until absorbed","Add stock ladle by ladle, stirring constantly","Stir in butter and parmesan"] },
+  { id:32, name:"Shepherd's Pie", type:"Dinner", country:"British", cost:5.50, time:70, cals:600, servings:4, onePot:false, desc:"Classic comfort food with lamb mince and mashed potato topping.", ingredients:[{i:"Lamb Mince",q:"500g",c:3.00,s:"🥩 Meat & Fish"},{i:"Potatoes",q:"800g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Carrot",q:"2",c:0.30,s:"🥦 Fruit & Veg"},{i:"Frozen Peas",q:"100g",c:0.40,s:"🧊 Frozen"},{i:"Lamb Stock",q:"300ml",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Butter & Milk",q:"for mash",c:0.40,s:"🥛 Dairy & Eggs"}], steps:["Brown mince with onion and carrot","Add stock, simmer 20 mins","Add peas","Mash potatoes with butter and milk","Top mince with mash","Bake 25 mins at 200°C"] },
+  { id:33, name:"Paella", type:"Dinner", country:"Spanish", cost:9.00, time:55, cals:620, servings:4, onePot:true, desc:"Traditional Spanish rice dish with seafood and chicken.", ingredients:[{i:"Paella Rice",q:"300g",c:1.00,s:"🌾 Dry Goods & Pasta"},{i:"Chicken Thighs",q:"4",c:2.50,s:"🥩 Meat & Fish"},{i:"Prawns",q:"200g",c:2.50,s:"🥩 Meat & Fish"},{i:"Mussels",q:"200g",c:2.00,s:"🥩 Meat & Fish"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Smoked Paprika",q:"1 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Saffron",q:"pinch",c:0.50,s:"🌶 Herbs & Spices"},{i:"Chicken Stock",q:"800ml",c:0.80,s:"🧴 Condiments & Sauces"}], steps:["Brown chicken","Fry onion and spices","Add rice and saffron stock","Arrange seafood on top","Cook without stirring 20 mins"] },
+  { id:34, name:"Pesto Pasta", type:"Dinner", country:"Italian", cost:3.00, time:15, cals:520, servings:2, onePot:false, desc:"Quick and vibrant pesto pasta.", ingredients:[{i:"Pasta",q:"200g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Pesto",q:"4 tbsp",c:1.20,s:"🧴 Condiments & Sauces"},{i:"Cherry Tomatoes",q:"150g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Parmesan",q:"30g",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Pine Nuts",q:"20g",c:0.40,s:"🌾 Dry Goods & Pasta"}], steps:["Cook pasta","Reserve pasta water","Toss with pesto, adding water to loosen","Top with tomatoes, parmesan and pine nuts"] },
+  { id:35, name:"Thai Green Curry", type:"Dinner", country:"Thai", cost:5.50, time:30, cals:520, servings:4, onePot:true, desc:"Fragrant and creamy Thai green curry.", ingredients:[{i:"Chicken Breast",q:"500g",c:3.00,s:"🥩 Meat & Fish"},{i:"Green Curry Paste",q:"3 tbsp",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Coconut Milk",q:"400ml tin",c:1.00,s:"🥫 Tins & Jars"},{i:"Courgette",q:"1",c:0.40,s:"🥦 Fruit & Veg"},{i:"Green Beans",q:"100g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Fish Sauce",q:"2 tbsp",c:0.25,s:"🧴 Condiments & Sauces"},{i:"Lime",q:"1",c:0.25,s:"🥦 Fruit & Veg"},{i:"Jasmine Rice",q:"300g",c:0.70,s:"🌾 Dry Goods & Pasta"}], steps:["Fry curry paste until fragrant","Add chicken, seal","Add coconut milk and veg","Simmer 15-20 mins","Season with fish sauce and lime","Serve over jasmine rice"] },
+  { id:36, name:"Carbonara", type:"Dinner", country:"Italian", cost:4.00, time:20, cals:650, servings:2, onePot:false, desc:"Roman pasta with eggs, pancetta and parmesan.", ingredients:[{i:"Spaghetti",q:"200g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Pancetta",q:"150g",c:1.50,s:"🥩 Meat & Fish"},{i:"Eggs",q:"2 whole + 2 yolks",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Parmesan",q:"60g",c:1.20,s:"🥛 Dairy & Eggs"},{i:"Black Pepper",q:"generous",c:0.05,s:"🌶 Herbs & Spices"}], steps:["Cook spaghetti","Fry pancetta until crispy","Mix eggs, yolks, parmesan and pepper","Drain pasta, reserve water","Toss pasta with pancetta off heat","Add egg mixture, toss quickly with pasta water"] },
+  { id:37, name:"Chicken Tikka Masala Pasta", type:"Dinner", country:"Fusion", cost:5.50, time:30, cals:620, servings:4, onePot:false, desc:"Popular British fusion - tikka masala with pasta.", ingredients:[{i:"Pasta",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Chicken Breast",q:"400g",c:2.40,s:"🥩 Meat & Fish"},{i:"Tikka Masala Sauce",q:"1 jar",c:1.50,s:"🧴 Condiments & Sauces"},{i:"Cream",q:"100ml",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Coriander",q:"to garnish",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Cook pasta","Fry chicken and onion","Add tikka sauce and cream","Simmer 15 mins","Toss with pasta","Garnish with coriander"] },
+  { id:38, name:"Bangers & Mash", type:"Dinner", country:"British", cost:4.50, time:35, cals:680, servings:4, onePot:false, desc:"Sausages with creamy mash and onion gravy.", ingredients:[{i:"Pork Sausages",q:"8",c:2.00,s:"🥩 Meat & Fish"},{i:"Potatoes",q:"800g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Onions",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Beef Stock",q:"300ml",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Butter",q:"60g",c:0.48,s:"🥛 Dairy & Eggs"},{i:"Milk",q:"100ml",c:0.10,s:"🥛 Dairy & Eggs"}], steps:["Grill sausages 20 mins","Boil potatoes, mash with butter and milk","Caramelise onions","Add stock and Worcestershire for gravy","Serve sausages on mash with gravy"] },
+  { id:39, name:"Chicken Katsu Curry", type:"Dinner", country:"Japanese", cost:5.50, time:35, cals:650, servings:2, onePot:false, desc:"Crispy panko chicken with Japanese curry sauce.", ingredients:[{i:"Chicken Breast",q:"2",c:2.40,s:"🥩 Meat & Fish"},{i:"Panko Breadcrumbs",q:"100g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Egg",q:"1",c:0.20,s:"🥛 Dairy & Eggs"},{i:"Katsu Curry Sauce",q:"1 packet",c:1.50,s:"🧴 Condiments & Sauces"},{i:"Japanese Rice",q:"300g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Plain Flour",q:"50g",c:0.05,s:"🌾 Dry Goods & Pasta"}], steps:["Flatten chicken, coat in flour, egg, then panko","Shallow fry 4-5 mins each side","Make katsu curry sauce per packet","Cook rice","Slice chicken, serve over rice with sauce"] },
+  { id:40, name:"Homemade Pizza", type:"Dinner", country:"Italian", cost:4.50, time:90, cals:680, servings:4, onePot:false, desc:"Wood-fired style homemade pizza.", ingredients:[{i:"Strong Bread Flour",q:"400g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Yeast",q:"7g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Tomato Passata",q:"200ml",c:0.60,s:"🥫 Tins & Jars"},{i:"Mozzarella",q:"250g",c:2.00,s:"🥛 Dairy & Eggs"},{i:"Toppings of Choice",q:"as desired",c:1.50,s:"🥦 Fruit & Veg"}], steps:["Make dough: flour, yeast, water, oil, salt","Knead 10 mins, rise 1h","Roll thin, spread passata","Top with mozzarella and toppings","Bake 10-12 mins at 250°C"] },
+  { id:41, name:"Chicken Fajitas", type:"Dinner", country:"Mexican", cost:5.00, time:25, cals:520, servings:4, onePot:false, desc:"Sizzling chicken fajitas with all the trimmings.", ingredients:[{i:"Chicken Breast",q:"500g",c:3.00,s:"🥩 Meat & Fish"},{i:"Flour Tortillas",q:"8",c:0.80,s:"🥖 Bakery"},{i:"Peppers",q:"3",c:1.80,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Fajita Seasoning",q:"1 packet",c:0.80,s:"🌶 Herbs & Spices"},{i:"Sour Cream",q:"100ml",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Guacamole",q:"1 pot",c:1.00,s:"🧴 Condiments & Sauces"}], steps:["Slice chicken and veg","Season with fajita mix","Stir-fry in hot pan 8-10 mins","Warm tortillas","Serve with sour cream and guacamole"] },
+  { id:42, name:"Sausage Casserole", type:"Dinner", country:"British", cost:4.00, time:60, cals:520, servings:4, onePot:true, desc:"Rich tomato-based sausage casserole.", ingredients:[{i:"Pork Sausages",q:"8",c:2.00,s:"🥩 Meat & Fish"},{i:"Tinned Tomatoes",q:"400g",c:0.50,s:"🥫 Tins & Jars"},{i:"Haricot Beans",q:"400g tin",c:0.70,s:"🥫 Tins & Jars"},{i:"Peppers",q:"2",c:1.20,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Smoked Paprika",q:"1 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Chicken Stock",q:"200ml",c:0.25,s:"🧴 Condiments & Sauces"}], steps:["Brown sausages","Fry onion and peppers","Add paprika, tomatoes, stock","Add beans and sausages","Simmer 40 mins","Serve with crusty bread"] },
+  { id:43, name:"Dal Tadka", type:"Dinner", country:"Indian", cost:2.50, time:40, cals:350, servings:4, onePot:true, desc:"Comforting spiced yellow lentil dal.", ingredients:[{i:"Yellow Lentils",q:"250g",c:0.75,s:"🌾 Dry Goods & Pasta"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Tomatoes",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"4 cloves",c:0.15,s:"🥦 Fruit & Veg"},{i:"Cumin Seeds",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Turmeric",q:"½ tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Ghee",q:"2 tbsp",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Rice",q:"to serve",c:0.60,s:"🌾 Dry Goods & Pasta"}], steps:["Simmer lentils with turmeric until soft","Make tadka: heat ghee, fry cumin, garlic","Add onion and tomatoes","Pour over lentils","Simmer together 10 mins","Serve with rice"] },
+  { id:44, name:"Jerk Chicken", type:"Dinner", country:"Jamaican", cost:6.50, time:50, cals:520, servings:4, onePot:false, desc:"Spicy Caribbean jerk chicken.", ingredients:[{i:"Chicken Thighs",q:"8",c:4.00,s:"🥩 Meat & Fish"},{i:"Jerk Paste",q:"3 tbsp",c:1.00,s:"🧴 Condiments & Sauces"},{i:"Lime",q:"2",c:0.50,s:"🥦 Fruit & Veg"},{i:"Rice & Peas",q:"300g rice",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Coconut Milk",q:"200ml",c:0.50,s:"🥫 Tins & Jars"},{i:"Kidney Beans",q:"200g",c:0.35,s:"🥫 Tins & Jars"}], steps:["Marinate chicken in jerk paste and lime","Grill or oven bake 35-40 mins","Make rice by cooking with coconut milk and beans","Serve chicken on rice with lime"] },
+  { id:45, name:"Chicken & Mushroom Pie", type:"Dinner", country:"British", cost:7.00, time:75, cals:680, servings:4, onePot:false, desc:"Comforting British pie with creamy filling.", ingredients:[{i:"Chicken Thighs",q:"600g",c:3.00,s:"🥩 Meat & Fish"},{i:"Mushrooms",q:"250g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Puff Pastry",q:"1 sheet",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Cream",q:"200ml",c:1.00,s:"🥛 Dairy & Eggs"},{i:"Chicken Stock",q:"200ml",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Thyme",q:"few sprigs",c:0.15,s:"🌶 Herbs & Spices"},{i:"Egg",q:"1 for glaze",c:0.20,s:"🥛 Dairy & Eggs"}], steps:["Cook chicken, shred","Fry onion and mushrooms","Make cream sauce with stock","Combine filling","Put in dish, top with pastry","Brush with egg, bake 30 mins at 200°C"] },
+  { id:46, name:"Chicken Tagine", type:"Dinner", country:"Moroccan", cost:6.50, time:70, cals:520, servings:4, onePot:true, desc:"Slow-cooked Moroccan chicken with olives and preserved lemon.", ingredients:[{i:"Chicken Thighs",q:"8",c:4.00,s:"🥩 Meat & Fish"},{i:"Preserved Lemons",q:"2",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Green Olives",q:"100g",c:0.80,s:"🥫 Tins & Jars"},{i:"Onions",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Cumin",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Chicken Stock",q:"300ml",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Couscous",q:"300g",c:0.90,s:"🌾 Dry Goods & Pasta"}], steps:["Brown chicken","Fry onion and spices","Add stock, preserved lemon, olives","Slow cook 1h","Prepare couscous","Serve with coriander"] },
+  { id:47, name:"Beef Stroganoff", type:"Dinner", country:"Russian", cost:7.00, time:30, cals:620, servings:4, onePot:true, desc:"Rich creamy beef and mushroom dish.", ingredients:[{i:"Beef Steak",q:"500g",c:4.00,s:"🥩 Meat & Fish"},{i:"Mushrooms",q:"250g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Sour Cream",q:"200ml",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Beef Stock",q:"200ml",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Dijon Mustard",q:"1 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Tagliatelle",q:"300g",c:0.80,s:"🌾 Dry Goods & Pasta"}], steps:["Cook pasta","Slice beef into strips, season","Brown beef in hot pan","Soften onion and mushrooms","Add stock and mustard","Stir in sour cream","Serve over pasta"] },
+  { id:48, name:"Pork Belly Ramen", type:"Dinner", country:"Japanese", cost:9.00, time:120, cals:720, servings:4, onePot:false, desc:"Rich pork-based ramen with soft boiled egg.", ingredients:[{i:"Pork Belly",q:"500g",c:3.50,s:"🥩 Meat & Fish"},{i:"Ramen Noodles",q:"300g",c:1.20,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"4",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Miso Paste",q:"3 tbsp",c:0.90,s:"🧴 Condiments & Sauces"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Spring Onions",q:"4",c:0.30,s:"🥦 Fruit & Veg"},{i:"Nori",q:"2 sheets",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Pork Stock",q:"2L",c:1.00,s:"🧴 Condiments & Sauces"}], steps:["Slow roast pork belly 2h at 160°C","Marinate boiled eggs in soy for 1h","Make broth with stock and miso","Cook noodles","Assemble bowls","Top with sliced pork, egg, nori and spring onions"] },
+  { id:49, name:"Leek & Potato Soup", type:"Dinner", country:"British", cost:2.50, time:35, cals:280, servings:4, onePot:true, desc:"Velvety smooth leek and potato soup.", ingredients:[{i:"Leeks",q:"3",c:1.00,s:"🥦 Fruit & Veg"},{i:"Potatoes",q:"500g",c:0.50,s:"🥦 Fruit & Veg"},{i:"Vegetable Stock",q:"1L",c:0.50,s:"🧴 Condiments & Sauces"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Cream",q:"50ml",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"30g",c:0.24,s:"🥛 Dairy & Eggs"}], steps:["Soften leeks and onion in butter","Add diced potatoes and stock","Simmer 20 mins until potato is soft","Blend until smooth","Stir in cream, season"] },
+  { id:50, name:"Salmon Teriyaki", type:"Dinner", country:"Japanese", cost:7.00, time:20, cals:480, servings:2, onePot:true, desc:"Glazed salmon with sweet teriyaki sauce.", ingredients:[{i:"Salmon Fillets",q:"2",c:4.00,s:"🥩 Meat & Fish"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Mirin",q:"2 tbsp",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Honey",q:"1 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Jasmine Rice",q:"300g",c:0.70,s:"🌾 Dry Goods & Pasta"},{i:"Spring Onions",q:"3",c:0.25,s:"🥦 Fruit & Veg"}], steps:["Mix soy, mirin, honey for teriyaki glaze","Pan-fry salmon, baste with glaze","Cook rice","Serve salmon on rice, top with spring onions"] },
+  { id:51, name:"Egg Fried Rice", type:"Dinner", country:"Chinese", cost:2.50, time:15, cals:420, servings:2, onePot:true, desc:"Quick fried rice with egg, veg and soy sauce.", ingredients:[{i:"Cooked Rice",q:"400g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"3",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Frozen Peas",q:"100g",c:0.40,s:"🧊 Frozen"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Spring Onions",q:"4",c:0.30,s:"🥦 Fruit & Veg"},{i:"Sesame Oil",q:"1 tsp",c:0.20,s:"🧴 Condiments & Sauces"}], steps:["Heat wok until very hot","Scramble eggs, push to side","Add rice","Stir-fry until hot","Add peas, soy, sesame oil","Top with spring onions"] },
+  { id:52, name:"Chicken Souvlaki", type:"Dinner", country:"Greek", cost:5.50, time:25, cals:480, servings:4, onePot:false, desc:"Greek marinated chicken skewers with pita.", ingredients:[{i:"Chicken Breast",q:"600g",c:3.60,s:"🥩 Meat & Fish"},{i:"Olive Oil",q:"3 tbsp",c:0.45,s:"🧴 Condiments & Sauces"},{i:"Lemon",q:"2",c:0.50,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Oregano",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Pita",q:"4",c:0.80,s:"🥖 Bakery"},{i:"Tzatziki",q:"to serve",c:0.80,s:"🧴 Condiments & Sauces"}], steps:["Marinate chicken in oil, lemon, garlic, oregano","Thread on skewers","Grill 3-4 mins each side","Serve in pita with tzatziki"] },
+  { id:53, name:"Warm Lentil Salad", type:"Lunch", country:"French", cost:3.50, time:30, cals:320, servings:2, onePot:true, desc:"Lentils with Dijon vinaigrette and smoked bacon.", ingredients:[{i:"Green Lentils",q:"200g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Smoked Bacon",q:"100g",c:1.00,s:"🥩 Meat & Fish"},{i:"Shallots",q:"3",c:0.30,s:"🥦 Fruit & Veg"},{i:"Dijon Mustard",q:"1 tbsp",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Red Wine Vinegar",q:"2 tbsp",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Olive Oil",q:"3 tbsp",c:0.45,s:"🧴 Condiments & Sauces"}], steps:["Cook lentils 25 mins","Fry bacon and shallots","Make dressing with mustard, vinegar, oil","Toss warm lentils with bacon and dressing"] },
+  { id:54, name:"Cheese Fondue", type:"Dinner", country:"Swiss", cost:8.00, time:20, cals:620, servings:4, onePot:true, desc:"Classic Swiss melted cheese fondue.", ingredients:[{i:"Gruyere",q:"300g",c:5.50,s:"🥛 Dairy & Eggs"},{i:"Emmental",q:"200g",c:3.50,s:"🥛 Dairy & Eggs"},{i:"White Wine",q:"200ml",c:1.60,s:"🧃 Drinks"},{i:"Garlic",q:"1 clove",c:0.05,s:"🥦 Fruit & Veg"},{i:"Cornflour",q:"1 tbsp",c:0.03,s:"🌾 Dry Goods & Pasta"},{i:"Crusty Bread",q:"for dipping",c:1.00,s:"🥖 Bakery"}], steps:["Rub pan with garlic","Heat wine","Gradually add grated cheese, stirring","Mix cornflour with kirsch, add to fondue","Serve with bread for dipping"] },
+  { id:55, name:"Moroccan Vegetable Tagine", type:"Dinner", country:"Moroccan", cost:4.50, time:50, cals:380, servings:4, onePot:true, desc:"Fragrant spiced vegetable tagine with couscous.", ingredients:[{i:"Sweet Potato",q:"2",c:0.80,s:"🥦 Fruit & Veg"},{i:"Chickpeas",q:"400g tin",c:0.70,s:"🥫 Tins & Jars"},{i:"Tinned Tomatoes",q:"400g",c:0.50,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Ras El Hanout",q:"2 tsp",c:0.20,s:"🌶 Herbs & Spices"},{i:"Couscous",q:"300g",c:0.90,s:"🌾 Dry Goods & Pasta"},{i:"Dried Apricots",q:"100g",c:0.80,s:"🌾 Dry Goods & Pasta"}], steps:["Fry onion with spices","Add sweet potato and tomatoes","Add chickpeas and apricots","Simmer 35 mins","Serve over couscous"] },
+  { id:56, name:"Pea & Mint Soup", type:"Lunch", country:"British", cost:2.50, time:15, cals:220, servings:4, onePot:true, desc:"Vibrant quick pea and mint soup.", ingredients:[{i:"Frozen Peas",q:"600g",c:1.20,s:"🧊 Frozen"},{i:"Mint",q:"handful",c:0.30,s:"🌶 Herbs & Spices"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Vegetable Stock",q:"800ml",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Cream",q:"50ml",c:0.30,s:"🥛 Dairy & Eggs"}], steps:["Soften onion","Add peas and stock","Simmer 5 mins","Blend with mint","Stir in cream"] },
+  { id:57, name:"Prawn Stir Fry", type:"Dinner", country:"Chinese", cost:5.50, time:20, cals:490, servings:2, onePot:true, desc:"Quick and punchy prawn noodle stir fry.", ingredients:[{i:"King Prawns",q:"300g",c:3.00,s:"🥩 Meat & Fish"},{i:"Egg Noodles",q:"200g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Pak Choi",q:"2",c:0.80,s:"🥦 Fruit & Veg"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Sweet Chilli Sauce",q:"2 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Garlic",q:"2 cloves",c:0.10,s:"🥦 Fruit & Veg"}], steps:["Cook noodles per packet","Stir-fry prawns 2-3 mins","Add garlic","Add pak choi and sauces","Toss with noodles"] },
+  { id:58, name:"Carrot & Lentil Soup", type:"Lunch", country:"British", cost:2.00, time:35, cals:240, servings:4, onePot:true, desc:"Vibrant and nourishing carrot soup.", ingredients:[{i:"Carrots",q:"600g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Red Lentils",q:"150g",c:0.45,s:"🌾 Dry Goods & Pasta"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Ginger",q:"1 inch",c:0.15,s:"🥦 Fruit & Veg"},{i:"Cumin",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Vegetable Stock",q:"1.2L",c:0.60,s:"🧴 Condiments & Sauces"}], steps:["Fry onion, ginger, cumin","Add carrots and lentils","Pour in stock, simmer 25 mins","Blend until smooth"] },
+  { id:59, name:"Toad in the Hole", type:"Dinner", country:"British", cost:3.50, time:50, cals:580, servings:4, onePot:true, desc:"Sausages in crispy Yorkshire pudding batter.", ingredients:[{i:"Pork Sausages",q:"8",c:2.00,s:"🥩 Meat & Fish"},{i:"Plain Flour",q:"140g",c:0.14,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"3",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Milk",q:"200ml",c:0.20,s:"🥛 Dairy & Eggs"},{i:"Oil",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"}], steps:["Heat oil in baking tin at 220°C","Grill sausages 10 mins","Make batter: whisk flour, eggs, milk","Pour sausages into hot tin","Pour over batter","Bake 25-30 mins until risen and golden"] },
+  { id:60, name:"Kedgeree", type:"Breakfast", country:"British", cost:5.00, time:30, cals:480, servings:4, onePot:true, desc:"Anglo-Indian spiced rice with smoked haddock.", ingredients:[{i:"Smoked Haddock",q:"400g",c:3.00,s:"🥩 Meat & Fish"},{i:"Basmati Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"4",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Curry Powder",q:"1 tbsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Butter",q:"50g",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Parsley",q:"handful",c:0.30,s:"🌶 Herbs & Spices"}], steps:["Poach haddock in milk, flake","Hard boil eggs, quarter","Cook rice","Fry onion with curry powder","Combine rice, fish, eggs","Top with parsley"] },
+  { id:61, name:"Tiramisu", type:"Dessert", country:"Italian", cost:5.00, time:30, cals:480, servings:8, onePot:true, desc:"Classic Italian coffee dessert.", ingredients:[{i:"Savoiardi Ladyfingers",q:"24",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Mascarpone",q:"500g",c:3.00,s:"🥛 Dairy & Eggs"},{i:"Eggs",q:"4 yolks",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Caster Sugar",q:"100g",c:0.30,s:"🌾 Dry Goods & Pasta"},{i:"Strong Coffee",q:"200ml",c:0.40,s:"🧃 Drinks"},{i:"Cocoa Powder",q:"2 tbsp",c:0.30,s:"🌶 Herbs & Spices"}], steps:["Whisk egg yolks with sugar until pale","Fold in mascarpone","Dip ladyfingers in coffee, layer in dish","Top with cream mixture","Repeat layers","Dust with cocoa, chill 4h"] },
+  { id:62, name:"Apple Crumble", type:"Dessert", country:"British", cost:2.50, time:45, cals:380, servings:6, onePot:false, desc:"Classic British apple crumble with custard.", ingredients:[{i:"Bramley Apples",q:"6",c:1.50,s:"🥦 Fruit & Veg"},{i:"Plain Flour",q:"175g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Butter",q:"100g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Caster Sugar",q:"100g",c:0.30,s:"🌾 Dry Goods & Pasta"},{i:"Custard",q:"to serve",c:0.80,s:"🥛 Dairy & Eggs"}], steps:["Peel and chop apples, cook with brown sugar","Make crumble: rub butter into flour and sugar","Put apples in dish, top with crumble","Bake 30 mins at 200°C","Serve with custard"] },
+  { id:63, name:"Sticky Toffee Pudding", type:"Dessert", country:"British", cost:3.00, time:50, cals:520, servings:6, onePot:false, desc:"Classic British dessert with toffee sauce.", ingredients:[{i:"Dates",q:"200g",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Self Raising Flour",q:"175g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Butter",q:"85g",c:0.68,s:"🥛 Dairy & Eggs"},{i:"Dark Brown Sugar",q:"85g",c:0.25,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Cream for sauce",q:"150ml",c:0.90,s:"🥛 Dairy & Eggs"}], steps:["Soak dates in boiling water, blend","Cream butter and sugar","Add eggs and date mixture","Fold in flour","Bake 25 mins at 180°C","Make toffee sauce: butter, sugar, cream","Serve warm with sauce and ice cream"] },
+  { id:64, name:"Pavlova", type:"Dessert", country:"Australian", cost:4.00, time:120, cals:380, servings:8, onePot:false, desc:"Crispy meringue with cream and fresh fruit.", ingredients:[{i:"Egg Whites",q:"4",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Caster Sugar",q:"220g",c:0.66,s:"🌾 Dry Goods & Pasta"},{i:"Vinegar",q:"1 tsp",c:0.05,s:"🧴 Condiments & Sauces"},{i:"Double Cream",q:"300ml",c:1.50,s:"🥛 Dairy & Eggs"},{i:"Mixed Berries",q:"300g",c:1.50,s:"🥦 Fruit & Veg"},{i:"Passion Fruit",q:"2",c:0.80,s:"🥦 Fruit & Veg"}], steps:["Whisk egg whites until stiff peaks","Gradually add sugar","Shape on baking paper","Bake 1h 15min at 130°C","Cool completely","Top with whipped cream and fruit"] },
+  { id:65, name:"Chocolate Fondant", type:"Dessert", country:"French", cost:4.00, time:25, cals:480, servings:4, onePot:false, desc:"Gooey chocolate lava cake.", ingredients:[{i:"Dark Chocolate",q:"200g",c:1.60,s:"🌾 Dry Goods & Pasta"},{i:"Butter",q:"100g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Eggs",q:"3 plus 3 yolks",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Caster Sugar",q:"100g",c:0.30,s:"🌾 Dry Goods & Pasta"},{i:"Plain Flour",q:"50g",c:0.05,s:"🌾 Dry Goods & Pasta"},{i:"Ice Cream",q:"to serve",c:1.00,s:"🧊 Frozen"}], steps:["Melt chocolate and butter","Whisk eggs and sugar until pale","Fold into chocolate","Add flour","Pour into buttered ramekins","Bake 10-12 mins at 200°C — serve immediately"] },
+  { id:66, name:"Banana Bread", type:"Breakfast", country:"American", cost:2.00, time:70, cals:320, servings:10, onePot:false, desc:"Moist and sweet banana loaf.", ingredients:[{i:"Ripe Bananas",q:"3",c:0.45,s:"🥦 Fruit & Veg"},{i:"Plain Flour",q:"225g",c:0.25,s:"🌾 Dry Goods & Pasta"},{i:"Butter",q:"115g",c:0.92,s:"🥛 Dairy & Eggs"},{i:"Caster Sugar",q:"150g",c:0.45,s:"🌾 Dry Goods & Pasta"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Baking Soda",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"}], steps:["Mash bananas","Cream butter and sugar","Add eggs and banana","Fold in flour and baking soda","Pour into loaf tin","Bake 60 mins at 175°C"] },
+  { id:67, name:"Chicken Pho", type:"Dinner", country:"Vietnamese", cost:5.50, time:60, cals:380, servings:4, onePot:true, desc:"Fragrant Vietnamese noodle soup.", ingredients:[{i:"Chicken Thighs",q:"800g",c:3.50,s:"🥩 Meat & Fish"},{i:"Rice Noodles",q:"200g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Star Anise",q:"3",c:0.20,s:"🌶 Herbs & Spices"},{i:"Cinnamon Stick",q:"1",c:0.10,s:"🌶 Herbs & Spices"},{i:"Ginger",q:"2 inch",c:0.25,s:"🥦 Fruit & Veg"},{i:"Bean Sprouts",q:"100g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Lime",q:"1",c:0.25,s:"🥦 Fruit & Veg"},{i:"Fish Sauce",q:"2 tbsp",c:0.25,s:"🧴 Condiments & Sauces"}], steps:["Simmer chicken with spices and ginger 45 mins","Remove chicken, shred","Strain broth","Cook noodles","Assemble bowls with noodles, broth, chicken","Top with bean sprouts, lime"] },
+  { id:68, name:"Gyoza Dumplings", type:"Dinner", country:"Japanese", cost:5.00, time:45, cals:360, servings:4, onePot:false, desc:"Japanese pan-fried dumplings.", ingredients:[{i:"Gyoza Wrappers",q:"24",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Pork Mince",q:"250g",c:1.50,s:"🥩 Meat & Fish"},{i:"Cabbage",q:"100g",c:0.30,s:"🥦 Fruit & Veg"},{i:"Ginger",q:"1 inch",c:0.15,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"2 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Soy Sauce",q:"2 tbsp",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Sesame Oil",q:"1 tsp",c:0.20,s:"🧴 Condiments & Sauces"}], steps:["Mix pork, cabbage, garlic, ginger, soy","Fill wrappers, pleat edges","Pan-fry 2 mins until base golden","Add splash of water, cover, steam 5 mins","Serve with dipping sauce"] },
+  { id:69, name:"Bibimbap", type:"Dinner", country:"Korean", cost:6.00, time:40, cals:580, servings:2, onePot:true, desc:"Korean rice bowl with vegetables, beef and gochujang.", ingredients:[{i:"Beef Mince",q:"200g",c:1.00,s:"🥩 Meat & Fish"},{i:"Sushi Rice",q:"300g",c:0.90,s:"🌾 Dry Goods & Pasta"},{i:"Spinach",q:"100g",c:0.50,s:"🥦 Fruit & Veg"},{i:"Carrot",q:"1",c:0.15,s:"🥦 Fruit & Veg"},{i:"Courgette",q:"1",c:0.40,s:"🥦 Fruit & Veg"},{i:"Eggs",q:"2",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Gochujang Paste",q:"2 tbsp",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Soy Sauce",q:"2 tbsp",c:0.15,s:"🧴 Condiments & Sauces"}], steps:["Cook rice","Sauté each veg separately","Brown beef with soy sauce","Fry egg sunny side up","Assemble bowl: rice, veg, beef, egg","Serve with gochujang"] },
+  { id:70, name:"Lamb Kofta", type:"Dinner", country:"Middle Eastern", cost:6.00, time:30, cals:520, servings:4, onePot:false, desc:"Spiced lamb meatballs on skewers.", ingredients:[{i:"Lamb Mince",q:"500g",c:3.00,s:"🥩 Meat & Fish"},{i:"Onion",q:"1 grated",c:0.20,s:"🥦 Fruit & Veg"},{i:"Cumin",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Coriander",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Flatbreads",q:"4",c:1.20,s:"🥖 Bakery"},{i:"Yogurt Dip",q:"to serve",c:0.50,s:"🥛 Dairy & Eggs"}], steps:["Mix mince with onion and spices","Mould around skewers","Grill or BBQ 10-12 mins","Serve in flatbreads with yogurt"] },
+  { id:71, name:"Boeuf Bourguignon", type:"Dinner", country:"French", cost:10.00, time:180, cals:650, servings:6, onePot:true, desc:"Classic French braised beef in red wine.", ingredients:[{i:"Beef Stewing Steak",q:"1kg",c:5.00,s:"🥩 Meat & Fish"},{i:"Red Wine",q:"500ml",c:4.00,s:"🧃 Drinks"},{i:"Bacon Lardons",q:"150g",c:1.50,s:"🥩 Meat & Fish"},{i:"Pearl Onions",q:"200g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Mushrooms",q:"200g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Beef Stock",q:"300ml",c:0.50,s:"🧴 Condiments & Sauces"},{i:"Thyme",q:"few sprigs",c:0.20,s:"🌶 Herbs & Spices"}], steps:["Brown beef in batches","Fry lardons, onions","Add wine and stock","Braise 2-3h at 160°C","Add mushrooms last 30 mins","Serve with crusty bread or mash"] },
+  { id:72, name:"Quiche Lorraine", type:"Lunch", country:"French", cost:5.00, time:60, cals:480, servings:6, onePot:false, desc:"Classic French savoury tart.", ingredients:[{i:"Shortcrust Pastry",q:"1 sheet",c:1.00,s:"🌾 Dry Goods & Pasta"},{i:"Bacon",q:"150g",c:1.50,s:"🥩 Meat & Fish"},{i:"Eggs",q:"3",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Double Cream",q:"200ml",c:1.00,s:"🥛 Dairy & Eggs"},{i:"Gruyere",q:"80g",c:1.50,s:"🥛 Dairy & Eggs"},{i:"Onion",q:"½",c:0.10,s:"🥦 Fruit & Veg"}], steps:["Line tart tin with pastry, blind bake 10 mins","Fry bacon and onion","Mix eggs and cream","Layer bacon in pastry case","Pour over cream mixture","Bake 30 mins at 180°C"] },
+  { id:73, name:"Pea & Ham Soup", type:"Lunch", country:"British", cost:2.50, time:40, cals:310, servings:4, onePot:true, desc:"Thick and hearty split pea soup with ham.", ingredients:[{i:"Split Peas",q:"250g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Ham Hock",q:"1",c:2.50,s:"🥩 Meat & Fish"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Carrot",q:"2",c:0.30,s:"🥦 Fruit & Veg"},{i:"Celery",q:"2 sticks",c:0.30,s:"🥦 Fruit & Veg"},{i:"Chicken Stock",q:"1.5L",c:0.75,s:"🧴 Condiments & Sauces"}], steps:["Soak peas overnight","Simmer ham hock in stock 1 hour","Remove ham, shred meat","Add peas and veg, simmer 30 mins","Blend half the soup","Return ham, season"] },
+  { id:74, name:"Chicken Gyros", type:"Dinner", country:"Greek", cost:5.00, time:30, cals:520, servings:4, onePot:false, desc:"Greek street food wrap with tzatziki.", ingredients:[{i:"Chicken Thighs",q:"600g",c:3.00,s:"🥩 Meat & Fish"},{i:"Pita Breads",q:"4",c:0.80,s:"🥖 Bakery"},{i:"Greek Yogurt",q:"150ml",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Cucumber",q:"¼",c:0.20,s:"🥦 Fruit & Veg"},{i:"Tomato",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Red Onion",q:"½",c:0.15,s:"🥦 Fruit & Veg"},{i:"Oregano",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Dill",q:"handful",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Marinate chicken in lemon, oregano, garlic","Grill or roast 25 mins","Make tzatziki with yogurt, cucumber, dill","Warm pitas","Slice chicken, fill pitas with tzatziki and salad"] },
+  { id:75, name:"Pulled Pork Burgers", type:"Dinner", country:"American", cost:7.00, time:300, cals:700, servings:6, onePot:true, desc:"Slow-cooked pulled pork in brioche buns.", ingredients:[{i:"Pork Shoulder",q:"1.2kg",c:4.00,s:"🥩 Meat & Fish"},{i:"BBQ Sauce",q:"300ml",c:2.00,s:"🧴 Condiments & Sauces"},{i:"Brioche Buns",q:"6",c:1.50,s:"🥖 Bakery"},{i:"Coleslaw",q:"200g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Smoked Paprika",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"}], steps:["Rub pork with spices and sugar","Slow cook 5-6h at 150°C","Shred with forks","Mix with BBQ sauce","Serve in buns with coleslaw"] },
+  { id:76, name:"Vegetable Lasagne", type:"Dinner", country:"Italian", cost:5.00, time:80, cals:520, servings:6, onePot:false, desc:"Hearty vegetarian lasagne with roasted veg.", ingredients:[{i:"Lasagne Sheets",q:"12",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Courgette",q:"2",c:0.80,s:"🥦 Fruit & Veg"},{i:"Aubergine",q:"1",c:0.80,s:"🥦 Fruit & Veg"},{i:"Peppers",q:"2",c:1.20,s:"🥦 Fruit & Veg"},{i:"Tinned Tomatoes",q:"800g",c:1.00,s:"🥫 Tins & Jars"},{i:"Milk",q:"500ml",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"50g",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Parmesan",q:"80g",c:1.60,s:"🥛 Dairy & Eggs"}], steps:["Roast vegetables 25 mins","Make tomato sauce","Make béchamel","Layer lasagne, veg, sauces","Top with parmesan","Bake 35 mins at 180°C"] },
+  { id:77, name:"Saag Paneer", type:"Dinner", country:"Indian", cost:4.50, time:30, cals:380, servings:4, onePot:true, desc:"Creamy spiced spinach with paneer cheese.", ingredients:[{i:"Paneer",q:"250g",c:2.00,s:"🥛 Dairy & Eggs"},{i:"Spinach",q:"500g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Garlic",q:"3 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Ginger",q:"1 inch",c:0.15,s:"🥦 Fruit & Veg"},{i:"Cream",q:"3 tbsp",c:0.20,s:"🥛 Dairy & Eggs"},{i:"Garam Masala",q:"1 tsp",c:0.10,s:"🌶 Herbs & Spices"}], steps:["Fry paneer until golden","Wilt spinach, blend","Fry onion, garlic, ginger","Add spices and spinach puree","Add paneer and cream","Simmer 10 mins"] },
+  { id:78, name:"Tom Yum Soup", type:"Dinner", country:"Thai", cost:5.00, time:25, cals:220, servings:4, onePot:true, desc:"Hot and sour Thai soup.", ingredients:[{i:"Prawns",q:"300g",c:3.00,s:"🥩 Meat & Fish"},{i:"Lemongrass",q:"2 stalks",c:0.40,s:"🌶 Herbs & Spices"},{i:"Kaffir Lime Leaves",q:"4",c:0.30,s:"🌶 Herbs & Spices"},{i:"Chilli",q:"2",c:0.20,s:"🌶 Herbs & Spices"},{i:"Fish Sauce",q:"3 tbsp",c:0.38,s:"🧴 Condiments & Sauces"},{i:"Lime Juice",q:"3 tbsp",c:0.60,s:"🥦 Fruit & Veg"},{i:"Mushrooms",q:"150g",c:0.60,s:"🥦 Fruit & Veg"},{i:"Chicken Stock",q:"1L",c:0.50,s:"🧴 Condiments & Sauces"}], steps:["Bring stock to boil with lemongrass and lime leaves","Add chilli and mushrooms","Add prawns, cook 3 mins","Season with fish sauce and lime"] },
+  { id:79, name:"Smoked Haddock Chowder", type:"Dinner", country:"British", cost:5.50, time:35, cals:420, servings:4, onePot:true, desc:"Creamy smoked fish chowder.", ingredients:[{i:"Smoked Haddock",q:"400g",c:3.00,s:"🥩 Meat & Fish"},{i:"Potato",q:"400g",c:0.40,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Milk",q:"500ml",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Cream",q:"100ml",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Sweetcorn",q:"200g",c:0.50,s:"🥫 Tins & Jars"},{i:"Parsley",q:"handful",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Poach haddock in milk, reserve milk","Sauté onion","Add potatoes and reserved milk","Simmer 15 mins","Flake fish back in, add corn and cream","Garnish with parsley"] },
+  { id:80, name:"Fish Pie", type:"Dinner", country:"British", cost:8.00, time:60, cals:580, servings:4, onePot:false, desc:"Classic creamy fish pie with mashed potato topping.", ingredients:[{i:"Mixed Fish",q:"600g",c:5.00,s:"🥩 Meat & Fish"},{i:"Prawns",q:"100g",c:1.20,s:"🥩 Meat & Fish"},{i:"Potatoes",q:"800g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Milk",q:"400ml",c:0.40,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"80g",c:0.64,s:"🥛 Dairy & Eggs"},{i:"Cheddar",q:"80g",c:0.80,s:"🥛 Dairy & Eggs"},{i:"Parsley",q:"handful",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Poach fish in milk, reserve milk","Make cheese sauce","Flake fish into sauce with prawns and parsley","Make mash","Top pie with mash and bake 25 mins at 200°C"] },
+  { id:81, name:"Feta & Spinach Filo Pie", type:"Dinner", country:"Greek", cost:5.50, time:50, cals:420, servings:6, onePot:false, desc:"Traditional Spanakopita-style filo pie.", ingredients:[{i:"Filo Pastry",q:"1 packet",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Spinach",q:"500g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Feta",q:"300g",c:3.60,s:"🥛 Dairy & Eggs"},{i:"Eggs",q:"3",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"80g",c:0.64,s:"🥛 Dairy & Eggs"},{i:"Dill",q:"handful",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Wilt spinach, squeeze dry","Mix with crumbled feta, eggs, dill","Brush filo sheets with butter","Layer filo in tin, add filling","Top with more filo, brush with butter","Bake 35 mins at 180°C"] },
+  { id:82, name:"Chicken & Chorizo Stew", type:"Dinner", country:"Spanish", cost:6.50, time:50, cals:560, servings:4, onePot:true, desc:"Rich Spanish-inspired chicken and chorizo stew.", ingredients:[{i:"Chicken Thighs",q:"8",c:4.00,s:"🥩 Meat & Fish"},{i:"Chorizo",q:"200g",c:1.80,s:"🥩 Meat & Fish"},{i:"Tinned Tomatoes",q:"400g",c:0.50,s:"🥫 Tins & Jars"},{i:"Butter Beans",q:"400g tin",c:0.70,s:"🥫 Tins & Jars"},{i:"Peppers",q:"2",c:1.20,s:"🥦 Fruit & Veg"},{i:"Smoked Paprika",q:"1 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Chicken Stock",q:"300ml",c:0.40,s:"🧴 Condiments & Sauces"}], steps:["Brown chicken","Fry chorizo, add paprika","Add peppers, tomatoes and stock","Return chicken, add beans","Simmer 30 mins"] },
+  { id:83, name:"Bircher Muesli", type:"Breakfast", country:"Swiss", cost:1.80, time:5, cals:360, servings:1, onePot:true, desc:"Swiss-style soaked oats with apple and nuts.", ingredients:[{i:"Rolled Oats",q:"70g",c:0.18,s:"🌾 Dry Goods & Pasta"},{i:"Apple Juice",q:"100ml",c:0.30,s:"🧃 Drinks"},{i:"Yogurt",q:"150ml",c:0.50,s:"🥛 Dairy & Eggs"},{i:"Apple",q:"1",c:0.30,s:"🥦 Fruit & Veg"},{i:"Nuts",q:"2 tbsp",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Honey",q:"1 tsp",c:0.10,s:"🧴 Condiments & Sauces"}], steps:["Mix oats with apple juice and yogurt","Refrigerate overnight","Grate apple in, add nuts","Drizzle with honey"] },
+  { id:84, name:"Miso Soup with Tofu", type:"Breakfast", country:"Japanese", cost:2.00, time:10, cals:180, servings:2, onePot:true, desc:"Classic Japanese miso soup.", ingredients:[{i:"Miso Paste",q:"3 tbsp",c:0.90,s:"🧴 Condiments & Sauces"},{i:"Tofu",q:"150g",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Dashi Stock",q:"600ml",c:0.80,s:"🧴 Condiments & Sauces"},{i:"Seaweed",q:"1 sheet",c:0.30,s:"🌾 Dry Goods & Pasta"},{i:"Spring Onions",q:"2",c:0.15,s:"🥦 Fruit & Veg"}], steps:["Heat dashi stock","Whisk in miso paste - do not boil","Add cubed tofu and seaweed","Serve with spring onions"] },
+  { id:85, name:"Poke Bowl", type:"Lunch", country:"Hawaiian", cost:8.00, time:20, cals:480, servings:2, onePot:true, desc:"Hawaiian-style raw fish rice bowl.", ingredients:[{i:"Sushi-grade Salmon",q:"250g",c:5.00,s:"🥩 Meat & Fish"},{i:"Sushi Rice",q:"300g",c:0.90,s:"🌾 Dry Goods & Pasta"},{i:"Edamame",q:"100g",c:0.80,s:"🧊 Frozen"},{i:"Avocado",q:"1",c:1.00,s:"🥦 Fruit & Veg"},{i:"Cucumber",q:"½",c:0.40,s:"🥦 Fruit & Veg"},{i:"Soy Sauce",q:"2 tbsp",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Sesame Seeds",q:"1 tbsp",c:0.20,s:"🌶 Herbs & Spices"}], steps:["Cook rice, cool","Dice fish, toss with soy and sesame oil","Arrange rice in bowl","Top with fish, edamame, avocado, cucumber","Sprinkle sesame seeds"] },
+  { id:86, name:"Caprese Salad", type:"Lunch", country:"Italian", cost:4.50, time:5, cals:320, servings:2, onePot:true, desc:"Fresh mozzarella, tomato and basil.", ingredients:[{i:"Mozzarella",q:"2 balls",c:2.00,s:"🥛 Dairy & Eggs"},{i:"Large Tomatoes",q:"3",c:0.60,s:"🥦 Fruit & Veg"},{i:"Fresh Basil",q:"handful",c:0.40,s:"🌶 Herbs & Spices"},{i:"Olive Oil",q:"3 tbsp",c:0.45,s:"🧴 Condiments & Sauces"},{i:"Balsamic Glaze",q:"drizzle",c:0.40,s:"🧴 Condiments & Sauces"}], steps:["Slice tomatoes and mozzarella","Arrange alternating on plate","Tuck in basil leaves","Drizzle olive oil and balsamic"] },
+  { id:87, name:"Mushroom Wellington", type:"Dinner", country:"British", cost:7.00, time:60, cals:520, servings:4, onePot:false, desc:"Vegetarian show-stopper Wellington.", ingredients:[{i:"Large Portobello Mushrooms",q:"4",c:2.00,s:"🥦 Fruit & Veg"},{i:"Puff Pastry",q:"1 sheet",c:1.50,s:"🌾 Dry Goods & Pasta"},{i:"Spinach",q:"200g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Brie or Soft Cheese",q:"150g",c:2.00,s:"🥛 Dairy & Eggs"},{i:"Egg",q:"1 for glaze",c:0.20,s:"🥛 Dairy & Eggs"}], steps:["Marinate and roast mushrooms","Wilt spinach with garlic","Layer mushrooms and cheese on pastry","Wrap and seal","Brush with egg","Bake 25 mins at 200°C"] },
+  { id:88, name:"Omelette", type:"Breakfast", country:"French", cost:1.50, time:10, cals:350, servings:1, onePot:true, desc:"Classic French omelette with choice of filling.", ingredients:[{i:"Eggs",q:"3",c:0.60,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"knob",c:0.10,s:"🥛 Dairy & Eggs"},{i:"Cheese",q:"30g",c:0.30,s:"🥛 Dairy & Eggs"},{i:"Herbs",q:"pinch",c:0.05,s:"🌶 Herbs & Spices"}], steps:["Beat eggs with seasoning","Melt butter in pan","Add eggs, stir and fold","Add filling","Fold and serve"] },
+  { id:89, name:"Mushroom Toast", type:"Breakfast", country:"British", cost:2.20, time:15, cals:280, servings:2, onePot:true, desc:"Buttery garlic mushrooms on sourdough.", ingredients:[{i:"Mushrooms",q:"300g",c:1.20,s:"🥦 Fruit & Veg"},{i:"Sourdough",q:"2 thick slices",c:0.50,s:"🥖 Bakery"},{i:"Garlic",q:"2 cloves",c:0.10,s:"🥦 Fruit & Veg"},{i:"Butter",q:"30g",c:0.24,s:"🥛 Dairy & Eggs"},{i:"Thyme",q:"few sprigs",c:0.15,s:"🌶 Herbs & Spices"},{i:"Parsley",q:"handful",c:0.20,s:"🌶 Herbs & Spices"}], steps:["Fry mushrooms in butter until golden","Add garlic and thyme","Toast sourdough","Top with mushrooms and parsley"] },
+  { id:90, name:"Chicken Soup", type:"Lunch", country:"British", cost:3.50, time:60, cals:280, servings:4, onePot:true, desc:"Wholesome homemade chicken noodle soup.", ingredients:[{i:"Chicken Breast",q:"2",c:2.40,s:"🥩 Meat & Fish"},{i:"Noodles or Small Pasta",q:"100g",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Carrot",q:"3",c:0.45,s:"🥦 Fruit & Veg"},{i:"Celery",q:"3 sticks",c:0.45,s:"🥦 Fruit & Veg"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Chicken Stock",q:"1.5L",c:0.75,s:"🧴 Condiments & Sauces"},{i:"Parsley",q:"handful",c:0.25,s:"🌶 Herbs & Spices"}], steps:["Simmer chicken in stock 25 mins, remove and shred","Add veg, simmer 20 mins","Add pasta, cook 10 mins","Return chicken","Season and garnish with parsley"] },
+  { id:91, name:"Coq au Vin", type:"Dinner", country:"French", cost:9.00, time:90, cals:600, servings:4, onePot:true, desc:"Classic French braised chicken in red wine.", ingredients:[{i:"Chicken Pieces",q:"8",c:5.00,s:"🥩 Meat & Fish"},{i:"Red Wine",q:"500ml",c:4.00,s:"🧃 Drinks"},{i:"Bacon Lardons",q:"150g",c:1.50,s:"🥩 Meat & Fish"},{i:"Mushrooms",q:"250g",c:1.00,s:"🥦 Fruit & Veg"},{i:"Pearl Onions",q:"200g",c:0.80,s:"🥦 Fruit & Veg"},{i:"Chicken Stock",q:"300ml",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Thyme",q:"few sprigs",c:0.20,s:"🌶 Herbs & Spices"}], steps:["Brown chicken in batches","Fry lardons","Add onions and mushrooms","Add wine and stock","Braise 1h at 160°C","Serve with mash or crusty bread"] },
+  { id:92, name:"Chicken Chow Mein", type:"Dinner", country:"Chinese", cost:4.50, time:20, cals:520, servings:2, onePot:true, desc:"Classic takeaway-style chow mein.", ingredients:[{i:"Chicken Breast",q:"2",c:2.40,s:"🥩 Meat & Fish"},{i:"Chow Mein Noodles",q:"200g",c:0.80,s:"🌾 Dry Goods & Pasta"},{i:"Mixed Veg",q:"300g",c:0.90,s:"🥦 Fruit & Veg"},{i:"Soy Sauce",q:"3 tbsp",c:0.20,s:"🧴 Condiments & Sauces"},{i:"Oyster Sauce",q:"2 tbsp",c:0.30,s:"🧴 Condiments & Sauces"},{i:"Sesame Oil",q:"1 tsp",c:0.20,s:"🧴 Condiments & Sauces"}], steps:["Cook noodles","Stir-fry chicken","Add veg","Add noodles and sauces","Toss and serve"] },
+  { id:93, name:"Steak with Peppercorn Sauce", type:"Dinner", country:"French", cost:12.00, time:20, cals:680, servings:2, onePot:false, desc:"Restaurant-style steak au poivre.", ingredients:[{i:"Sirloin Steaks",q:"2",c:8.00,s:"🥩 Meat & Fish"},{i:"Black Peppercorns",q:"2 tbsp",c:0.20,s:"🌶 Herbs & Spices"},{i:"Brandy",q:"50ml",c:0.80,s:"🧃 Drinks"},{i:"Cream",q:"150ml",c:0.90,s:"🥛 Dairy & Eggs"},{i:"Beef Stock",q:"100ml",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Chips",q:"to serve",c:1.00,s:"🥦 Fruit & Veg"}], steps:["Crush peppercorns, coat steaks","Sear in very hot pan 2-4 mins each side","Rest steaks","Deglaze pan with brandy","Add stock and cream, reduce","Pour over steaks"] },
+  { id:94, name:"Stuffed Peppers", type:"Dinner", country:"Mediterranean", cost:5.00, time:50, cals:420, servings:4, onePot:false, desc:"Colourful peppers stuffed with rice and mince.", ingredients:[{i:"Peppers",q:"4",c:2.40,s:"🥦 Fruit & Veg"},{i:"Beef Mince",q:"300g",c:1.50,s:"🥩 Meat & Fish"},{i:"Cooked Rice",q:"200g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Tinned Tomatoes",q:"200g",c:0.25,s:"🥫 Tins & Jars"},{i:"Onion",q:"1",c:0.20,s:"🥦 Fruit & Veg"},{i:"Mozzarella",q:"100g",c:1.00,s:"🥛 Dairy & Eggs"}], steps:["Cut tops off peppers, remove seeds","Brown mince with onion","Mix with rice and tomatoes","Fill peppers","Top with mozzarella","Bake 35 mins at 190°C"] },
+  { id:95, name:"Scotch Eggs", type:"Lunch", country:"British", cost:4.00, time:40, cals:420, servings:4, onePot:false, desc:"Classic British pub snack.", ingredients:[{i:"Eggs",q:"6",c:1.20,s:"🥛 Dairy & Eggs"},{i:"Pork Mince",q:"400g",c:2.00,s:"🥩 Meat & Fish"},{i:"Breadcrumbs",q:"100g",c:0.40,s:"🌾 Dry Goods & Pasta"},{i:"Flour",q:"50g",c:0.05,s:"🌾 Dry Goods & Pasta"},{i:"Mixed Herbs",q:"1 tsp",c:0.05,s:"🌶 Herbs & Spices"},{i:"Oil",q:"for frying",c:0.40,s:"🧴 Condiments & Sauces"}], steps:["Boil 4 eggs 7 mins, cool and peel","Season pork mince with herbs","Wrap eggs in mince","Coat in flour, egg, breadcrumbs","Fry or bake at 180°C 20 mins"] },
+  { id:96, name:"Chicken & Leek Risotto", type:"Dinner", country:"British", cost:5.50, time:45, cals:560, servings:4, onePot:true, desc:"Creamy British-style risotto with chicken and leeks.", ingredients:[{i:"Arborio Rice",q:"320g",c:1.20,s:"🌾 Dry Goods & Pasta"},{i:"Chicken Breast",q:"2",c:2.40,s:"🥩 Meat & Fish"},{i:"Leeks",q:"2",c:0.60,s:"🥦 Fruit & Veg"},{i:"White Wine",q:"100ml",c:0.60,s:"🧃 Drinks"},{i:"Chicken Stock",q:"1.2L",c:0.60,s:"🧴 Condiments & Sauces"},{i:"Parmesan",q:"60g",c:1.20,s:"🥛 Dairy & Eggs"},{i:"Butter",q:"30g",c:0.24,s:"🥛 Dairy & Eggs"}], steps:["Poach and shred chicken","Soften leeks","Add rice, toast","Add wine, stir until absorbed","Add stock ladle by ladle","Stir in chicken, butter and parmesan"] },
+  { id:97, name:"Slow Cooker Pulled Pork", type:"Dinner", country:"American", cost:7.00, time:480, cals:650, servings:8, onePot:true, desc:"Super-easy slow cooker pulled pork.", ingredients:[{i:"Pork Shoulder",q:"1.5kg",c:5.00,s:"🥩 Meat & Fish"},{i:"BBQ Sauce",q:"300ml",c:2.00,s:"🧴 Condiments & Sauces"},{i:"Cola",q:"250ml",c:0.20,s:"🧃 Drinks"},{i:"Brown Sugar",q:"2 tbsp",c:0.20,s:"🌾 Dry Goods & Pasta"},{i:"Smoked Paprika",q:"2 tsp",c:0.10,s:"🌶 Herbs & Spices"},{i:"Burger Buns",q:"8",c:1.60,s:"🥖 Bakery"}], steps:["Rub pork with spices and sugar","Place in slow cooker with cola","Cook on low 8h or high 4h","Shred with forks","Mix with BBQ sauce","Serve in buns"] },
+  { id:98, name:"Goulash", type:"Dinner", country:"Hungarian", cost:6.50, time:120, cals:560, servings:4, onePot:true, desc:"Rich Hungarian beef stew with paprika.", ingredients:[{i:"Beef Stewing Steak",q:"700g",c:4.50,s:"🥩 Meat & Fish"},{i:"Onions",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Smoked Paprika",q:"3 tbsp",c:0.30,s:"🌶 Herbs & Spices"},{i:"Tinned Tomatoes",q:"400g",c:0.50,s:"🥫 Tins & Jars"},{i:"Red Peppers",q:"2",c:1.20,s:"🥦 Fruit & Veg"},{i:"Beef Stock",q:"500ml",c:0.70,s:"🧴 Condiments & Sauces"},{i:"Egg Noodles",q:"300g",c:0.90,s:"🌾 Dry Goods & Pasta"}], steps:["Brown beef","Fry onions until soft","Add paprika and peppers","Add tomatoes and stock","Braise 90 mins","Serve over noodles with sour cream"] },
+  { id:99, name:"Korean Fried Chicken", type:"Dinner", country:"Korean", cost:7.00, time:40, cals:680, servings:4, onePot:false, desc:"Double-fried chicken with gochujang glaze.", ingredients:[{i:"Chicken Wings",q:"1kg",c:4.00,s:"🥩 Meat & Fish"},{i:"Gochujang",q:"3 tbsp",c:1.00,s:"🧴 Condiments & Sauces"},{i:"Honey",q:"2 tbsp",c:0.40,s:"🧴 Condiments & Sauces"},{i:"Soy Sauce",q:"2 tbsp",c:0.15,s:"🧴 Condiments & Sauces"},{i:"Cornflour",q:"100g",c:0.30,s:"🌾 Dry Goods & Pasta"},{i:"Sesame Seeds",q:"1 tbsp",c:0.20,s:"🌶 Herbs & Spices"}], steps:["Coat chicken in cornflour","Fry at 160°C for 8 mins","Rest, then fry again at 190°C until super crispy","Make glaze with gochujang, honey, soy, garlic","Toss chicken in glaze","Top with sesame seeds"] },
+  { id:100, name:"Beef Rendang", type:"Dinner", country:"Malaysian", cost:8.50, time:180, cals:680, servings:4, onePot:true, desc:"Rich coconut milk and spice braised beef.", ingredients:[{i:"Beef Shin or Chuck",q:"700g",c:4.50,s:"🥩 Meat & Fish"},{i:"Coconut Milk",q:"400ml",c:1.00,s:"🥫 Tins & Jars"},{i:"Lemongrass",q:"2 stalks",c:0.40,s:"🌶 Herbs & Spices"},{i:"Ginger",q:"2 inch",c:0.25,s:"🥦 Fruit & Veg"},{i:"Dried Chillies",q:"6",c:0.30,s:"🌶 Herbs & Spices"},{i:"Onion",q:"2",c:0.40,s:"🥦 Fruit & Veg"},{i:"Rice",q:"300g",c:0.60,s:"🌾 Dry Goods & Pasta"}], steps:["Blend chilli, lemongrass, ginger, onion to paste","Brown paste in oil","Add beef, coat in paste","Add coconut milk","Slow simmer 2-3h until dry and dark","Serve with rice"] }
+];
+</script>
+<script>
+// ===========================
+// STATE
+// ===========================
+let state = {
+  recipes: [],
+  pantry: [],
+  weekPlan: {}, // {day_mealtype: recipeId}
+  shoppingList: [],
+  activeFilters: new Set(),
+  mealsMade: {} // {day_mealtype: true}
+};
+
+let pendingMealSlot = null; // {day, mealType}
+
+// ===========================
+// STORAGE
+// ===========================
+function saveState() {
+  try {
+    const toSave = {
+      recipes: state.recipes, // Save ALL recipes including edited default ones
+      pantry: state.pantry,
+      weekPlan: state.weekPlan,
+      shoppingList: state.shoppingList,
+      mealsMade: state.mealsMade || {}
+    };
+    localStorage.setItem('mealflow_state', JSON.stringify(toSave));
+  } catch(e) { console.warn('Save failed', e); }
+}
+
+function loadState() {
+  try {
+    const saved = localStorage.getItem('mealflow_state');
+    if (saved) {
+      const data = JSON.parse(saved);
+      // If recipes were saved (full list), use them; otherwise merge defaults with custom
+      if (data.recipes && data.recipes.length > 0) {
+        state.recipes = data.recipes;
+      } else {
+        state.recipes = [...DEFAULT_RECIPES];
+      }
+      state.pantry = data.pantry || [];
+      state.weekPlan = data.weekPlan || {};
+      state.shoppingList = data.shoppingList || [];
+      state.mealsMade = data.mealsMade || {};
+    } else {
+      state.recipes = [...DEFAULT_RECIPES];
+      state.mealsMade = {};
+    }
+  } catch(e) {
+    state.recipes = [...DEFAULT_RECIPES];
+    state.mealsMade = {};
+  }
+}
+
+// ===========================
+// NAV
+// ===========================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  // Sync top nav
+  const tabs = document.querySelectorAll('.nav-tab');
+  tabs.forEach(t => { if (t.textContent.toLowerCase().includes(id.substring(0,4))) t.classList.add('active'); });
+  // Sync bottom nav
+  document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+  const bnb = document.getElementById('bnb-' + id);
+  if (bnb) bnb.classList.add('active');
+  if (id === 'planner') renderWeekGrid();
+  if (id === 'recipes') renderRecipes();
+  if (id === 'pantry') renderPantry();
+  if (id === 'shopping') { renderShoppingList(); updateConfirmBar(); }
+}
+
+// ===========================
+// MODAL
+// ===========================
+function showModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) closeModal(e.target.id);
+});
+
+// ===========================
+// TOAST
+// ===========================
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ===========================
+// WEEK PLANNER
+// ===========================
+let mobileView = 'day'; // 'day' or 'week'
+let activeMobileDay = DAYS[0];
+
+function setMobileView(view) {
+  mobileView = view;
+  document.getElementById('vtDayBtn').classList.toggle('active', view === 'day');
+  document.getElementById('vtWeekBtn').classList.toggle('active', view === 'week');
+  const dayTabs = document.getElementById('dayTabs');
+  const weekGrid = document.getElementById('weekGrid');
+  const weekOverview = document.getElementById('weekOverviewMobile');
+  if (view === 'day') {
+    dayTabs.style.display = '';
+    weekGrid.style.display = '';
+    if (weekOverview) { weekOverview.classList.remove('visible'); }
+  } else {
+    dayTabs.style.display = 'none';
+    weekGrid.style.display = 'none';
+    if (weekOverview) { weekOverview.classList.add('visible'); renderWeekOverview(); }
+  }
+}
+
+function renderWeekOverview() {
+  const el = document.getElementById('weekOverviewMobile');
+  if (!el) return;
+  el.innerHTML = DAYS.map(day => {
+    const meals = MEAL_TYPES.map(mType => {
+      const key = `${day}_${mType}`;
+      const recipeId = state.weekPlan[key];
+      const recipe = recipeId ? state.recipes.find(r => r.id === recipeId) : null;
+      return `<div class="wom-meal">
+        <div class="wom-label">${mType.substring(0,5)}</div>
+        <div class="wom-name" style="${recipe ? '' : 'color:var(--border);'}">${recipe ? recipe.name : '—'}</div>
+      </div>`;
+    }).join('');
+    return `<div class="wom-day">
+      <div class="wom-day-header">${day}</div>
+      <div class="wom-meals">${meals}</div>
+    </div>`;
+  }).join('');
+}
+
+
+
+function renderWeekGrid() {
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+  let totalCost = 0, totalCals = 0;
+
+  // Build mobile day tabs
+  const dayTabsEl = document.getElementById('dayTabs');
+  if (dayTabsEl) {
+    dayTabsEl.innerHTML = DAYS.map(d => `
+      <button class="day-tab-btn ${d === activeMobileDay ? 'active' : ''}" onclick="setMobileDay('${d}')">${d.substring(0,3)}</button>
+    `).join('');
+  }
+
+  DAYS.forEach(day => {
+    const col = document.createElement('div');
+    col.className = 'day-col' + (day === activeMobileDay ? ' mobile-active' : '');
+    col.id = 'day-col-' + day;
+    col.innerHTML = `<div class="day-header">${day}</div>`;
+
+    MEAL_TYPES.forEach(mType => {
+      const isWeekday = ['Monday','Tuesday','Wednesday','Thursday','Friday'].includes(day);
+      const isBlocked = isWeekday && (mType === 'Breakfast' || mType === 'Lunch');
+
+      const key = `${day}_${mType}`;
+      const recipeId = state.weekPlan[key];
+      const recipe = recipeId ? state.recipes.find(r => r.id === recipeId) : null;
+      if (recipe) {
+        totalCost += recipe.cost || 0;
+        totalCals += recipe.cals || 0;
+      }
+
+      const slot = document.createElement('div');
+      slot.className = 'meal-slot';
+
+      if (isBlocked) {
+        slot.innerHTML = `<div class="meal-slot-label" style="opacity:0.4;">${mType}</div><div style="font-size:0.65rem;color:var(--muted);text-align:center;padding:0.5rem 0;opacity:0.5;">—</div>`;
+        col.appendChild(slot);
+        return;
+      }
+
+      slot.innerHTML = `<div class="meal-slot-label">${mType}</div>`;
+
+      if (recipe) {
+        const made = state.mealsMade && state.mealsMade[key];
+        const card = document.createElement('div');
+        card.className = 'meal-card-mini';
+        card.style.opacity = made ? '0.5' : '1';
+        card.innerHTML = `
+          <button class="remove-meal" onclick="removeMeal('${day}','${mType}',event)">✕</button>
+          <div class="name" style="${made ? 'text-decoration:line-through;color:var(--muted);' : ''}">${recipe.name}</div>
+          <div class="meta">£${recipe.cost?.toFixed(2)} · ${recipe.cals} kcal</div>
+          <button onclick="event.stopPropagation();openMealMadeModal('${day}','${mType}')" style="margin-top:0.3rem;width:100%;background:${made ? 'rgba(74,140,101,0.15)' : 'rgba(0,0,0,0.05)'};border:none;border-radius:4px;color:${made ? 'var(--green)' : 'var(--muted)'};font-size:0.65rem;padding:0.2rem;cursor:pointer;">${made ? '✅ Made' : '☐ Mark as Made'}</button>
+        `;
+        card.addEventListener('click', (e) => { if (!e.target.classList.contains('remove-meal') && e.target.tagName !== 'BUTTON') showRecipeDetail(recipe.id); });
+        slot.appendChild(card);
+      } else {
+        const btn = document.createElement('button');
+        btn.className = 'add-meal-btn';
+        btn.textContent = '+ Add';
+        btn.onclick = () => openAddMealModal(day, mType);
+        slot.appendChild(btn);
+      }
+      col.appendChild(slot);
+    });
+    grid.appendChild(col);
+  });
+
+  document.getElementById('weekCost').textContent = '£' + totalCost.toFixed(2);
+  document.getElementById('weekCals').textContent = Math.round(totalCals).toLocaleString();
+}
+
+function setMobileDay(day) {
+  activeMobileDay = day;
+  document.querySelectorAll('.day-col').forEach(el => el.classList.remove('mobile-active'));
+  const col = document.getElementById('day-col-' + day);
+  if (col) col.classList.add('mobile-active');
+  document.querySelectorAll('.day-tab-btn').forEach((btn, i) => {
+    btn.classList.toggle('active', DAYS[i] === day);
+  });
+}
+
+function openAddMealModal(day, mType) {
+  pendingMealSlot = {day, mealType: mType};
+  document.getElementById('mealSearchInput').value = '';
+  filterMealSearch();
+  showModal('addMealModal');
+}
+
+function filterMealSearch() {
+  const q = document.getElementById('mealSearchInput').value.toLowerCase();
+  const results = document.getElementById('mealSearchResults');
+  const filtered = state.recipes.filter(r => !q || r.name.toLowerCase().includes(q) || r.country?.toLowerCase().includes(q));
+  results.innerHTML = filtered.slice(0, 30).map(r => `
+    <div class="recipe-card" onclick="assignMeal(${r.id})" style="cursor:pointer;">
+      <div class="rc-title">${r.name}</div>
+      <div class="rc-meta">
+        <span class="badge badge-${r.type==='Breakfast'?'orange':r.type==='Lunch'?'blue':'green'}">${r.type}</span>
+        <span class="badge badge-yellow">£${r.cost?.toFixed(2)}</span>
+        <span class="tag">⏱ ${r.time}m</span>
+        <span class="tag">🔥 ${r.cals} kcal</span>
+        ${r.onePot ? '<span class="tag">🥘 1-pot</span>' : ''}
+      </div>
+    </div>
+  `).join('');
+}
+
+function assignMeal(recipeId) {
+  if (!pendingMealSlot) return;
+  const key = `${pendingMealSlot.day}_${pendingMealSlot.mealType}`;
+  state.weekPlan[key] = recipeId;
+  saveState();
+  closeModal('addMealModal');
+  renderWeekGrid();
+  toast('Meal added!');
+}
+
+function removeMeal(day, mType, e) {
+  e.stopPropagation();
+  delete state.weekPlan[`${day}_${mType}`];
+  saveState();
+  renderWeekGrid();
+}
+
+function clearWeek() {
+  if (confirm('Clear the entire week plan?')) {
+    state.weekPlan = {};
+    saveState();
+    renderWeekGrid();
+    toast('Week cleared!');
+  }
+}
+
+function surpriseMe() {
+  // Find recipes we have most pantry items for
+  const pantryItems = state.pantry.map(p => p.name.toLowerCase());
+  
+  const scoreRecipe = (r) => {
+    if (!r.ingredients) return 0;
+    let score = 0;
+    r.ingredients.forEach(ing => {
+      if (pantryItems.some(p => ing.i.toLowerCase().includes(p) || p.includes(ing.i.toLowerCase().split(' ')[0]))) {
+        score++;
+      }
+    });
+    return score;
+  };
+
+  const breakfastRecipes = state.recipes.filter(r => r.type === 'Breakfast');
+  const lunchRecipes = state.recipes.filter(r => r.type === 'Lunch');
+  const dinnerRecipes = state.recipes.filter(r => r.type === 'Dinner');
+
+  const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+  
+  state.weekPlan = {};
+  DAYS.forEach(day => {
+    const bf = pickRandom(breakfastRecipes);
+    const lu = pickRandom(lunchRecipes);
+    const di = pickRandom(dinnerRecipes);
+    if (bf) state.weekPlan[`${day}_Breakfast`] = bf.id;
+    if (lu) state.weekPlan[`${day}_Lunch`] = lu.id;
+    if (di) state.weekPlan[`${day}_Dinner`] = di.id;
+  });
+
+  saveState();
+  renderWeekGrid();
+  toast('✨ Week planned! Shopping list ready.');
+}
+
+function generateShoppingList() {
+  const needed = {};
+  const pantryLower = state.pantry.map(p => p.name.toLowerCase());
+
+  Object.values(state.weekPlan).forEach(recipeId => {
+    const recipe = state.recipes.find(r => r.id === recipeId);
+    if (!recipe || !recipe.ingredients) return;
+    const servings = recipe.servings || 2;
+    // Scale factor: we want 2 servings (for 2 people)
+    const scaleFactor = servings > 0 ? (2 / servings) : 1;
+    
+    recipe.ingredients.forEach(ing => {
+      const inPantry = pantryLower.some(p => ing.i.toLowerCase().includes(p) || p.includes(ing.i.toLowerCase().split(' ')[0]));
+      if (!inPantry) {
+        const key = ing.i.toLowerCase().trim();
+        if (!needed[key]) {
+          const { qty, cost, s } = getShopQtyAndCost(ing, scaleFactor);
+          needed[key] = { name: ing.i, qty, cost, section: s || ing.s, checked: false };
+        }
+        // Don't double-add cost since we buy whole units
+      }
+    });
+  });
+
+  // Merge with existing list, add new items
+  const existingNames = state.shoppingList.map(i => i.name.toLowerCase());
+  Object.values(needed).forEach(item => {
+    if (!existingNames.includes(item.name.toLowerCase())) {
+      state.shoppingList.push({ ...item, id: Date.now() + Math.random() });
+    }
+  });
+
+  saveState();
+  showPage('shopping');
+  renderShoppingList();
+  toast('Shopping list generated!');
+}
+
+// ===========================
+// RECIPES
+// ===========================
+let activeFilters = {};
+
+function toggleFilter(el, key) {
+  el.classList.toggle('active');
+  if (el.classList.contains('active')) activeFilters[key] = true;
+  else delete activeFilters[key];
+  renderRecipes();
+}
+
+function renderRecipes() {
+  const search = document.getElementById('recipeSearch')?.value?.toLowerCase() || '';
+  const mealType = document.getElementById('filterMealType')?.value || '';
+  const country = document.getElementById('filterCountry')?.value || '';
+  const sortBy = document.getElementById('sortRecipes')?.value || '';
+
+  // Populate country select
+  const countrySelect = document.getElementById('filterCountry');
+  if (countrySelect && countrySelect.options.length < 3) {
+    const countries = [...new Set(state.recipes.map(r => r.country).filter(Boolean))].sort();
+    countries.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      countrySelect.appendChild(opt);
+    });
+  }
+
+  let filtered = state.recipes.filter(r => {
+    if (search && !r.name.toLowerCase().includes(search) && !r.country?.toLowerCase().includes(search) && !r.desc?.toLowerCase().includes(search)) return false;
+    if (mealType && r.type !== mealType) return false;
+    if (country && r.country !== country) return false;
+    if (activeFilters.onePot && !r.onePot) return false;
+    if (activeFilters.quick && r.time > 30) return false;
+    if (activeFilters.budget && r.cost > 4) return false;
+    if (activeFilters.inPantry) {
+      const pantryLower = state.pantry.map(p => p.name.toLowerCase());
+      const hasAll = r.ingredients?.every(ing => pantryLower.some(p => ing.i.toLowerCase().includes(p) || p.includes(ing.i.toLowerCase().split(' ')[0])));
+      if (!hasAll) return false;
+    }
+    return true;
+  });
+
+  if (sortBy === 'price') filtered.sort((a,b) => (a.cost||0)-(b.cost||0));
+  else if (sortBy === 'price-desc') filtered.sort((a,b) => (b.cost||0)-(a.cost||0));
+  else if (sortBy === 'calories') filtered.sort((a,b) => (a.cals||0)-(b.cals||0));
+  else if (sortBy === 'time') filtered.sort((a,b) => (a.time||0)-(b.time||0));
+  else if (sortBy === 'ingredients') filtered.sort((a,b) => (a.ingredients?.length||0)-(b.ingredients?.length||0));
+  else if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
+
+  document.getElementById('recipeCount').textContent = `${filtered.length} recipes`;
+
+  const grid = document.getElementById('recipesGrid');
+  grid.innerHTML = filtered.map(r => {
+    const typeColor = r.type === 'Breakfast' ? 'orange' : r.type === 'Lunch' ? 'blue' : r.type === 'Dinner' ? 'green' : 'yellow';
+    return `
+      <div class="recipe-card" onclick="showRecipeDetail(${r.id})">
+        <div class="rc-title">${r.name}</div>
+        <div class="rc-meta">
+          <span class="badge badge-${typeColor}">${r.type}</span>
+          ${r.country ? `<span class="tag">${r.country}</span>` : ''}
+          ${r.onePot ? `<span class="tag">🥘 1-pot</span>` : ''}
+        </div>
+        <div class="rc-meta">
+          <span class="badge badge-yellow">£${r.cost?.toFixed(2)}</span>
+          <span class="tag">⏱ ${r.time}m</span>
+          <span class="tag">🔥 ${r.cals} kcal</span>
+          <span class="tag">👤 ${r.servings} serv</span>
+          <span class="tag">🥕 ${r.ingredients?.length || 0} ing</span>
+        </div>
+        <div class="rc-desc">${r.desc || ''}</div>
+        <div class="rc-actions">
+          <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();quickAddToPlanner(${r.id})">+ Add to Plan</button>
+          <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openEditRecipe(${r.id})">✏️ Edit</button>
+          <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteRecipe(${r.id})">🗑 Delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function quickAddToPlanner(recipeId) {
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return;
+  // Find first empty slot for this meal type
+  for (const day of DAYS) {
+    const key = `${day}_${recipe.type}`;
+    if (!state.weekPlan[key]) {
+      state.weekPlan[key] = recipeId;
+      saveState();
+      toast(`${recipe.name} added to ${day} ${recipe.type}!`);
+      return;
+    }
+  }
+  toast('No empty slots for this meal type this week!');
+}
+
+function showRecipeDetail(id) {
+  const r = state.recipes.find(rc => rc.id === id);
+  if (!r) return;
+  const typeColor = r.type === 'Breakfast' ? 'orange' : r.type === 'Lunch' ? 'blue' : r.type === 'Dinner' ? 'green' : 'yellow';
+  document.getElementById('recipeDetailContent').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:1rem;margin-bottom:1.25rem;">
+      <div>
+        <div class="modal-title" style="margin-bottom:0.5rem;">${r.name}</div>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          <span class="badge badge-${typeColor}">${r.type}</span>
+          ${r.country ? `<span class="tag">${r.country}</span>` : ''}
+          ${r.onePot ? `<span class="tag">🥘 One-Pot</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0.75rem;margin-bottom:1.25rem;">
+      <div class="stat-card"><div class="stat-val">£${r.cost?.toFixed(2)}</div><div class="stat-label">Est. Cost</div></div>
+      <div class="stat-card"><div class="stat-val">${r.time}m</div><div class="stat-label">Cook Time</div></div>
+      <div class="stat-card"><div class="stat-val">${r.cals}</div><div class="stat-label">Kcal/Portion</div></div>
+      <div class="stat-card"><div class="stat-val">${r.servings}</div><div class="stat-label">Servings</div></div>
+    </div>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:1.25rem;">${r.desc || ''}</p>
+    <div class="grid-2" style="gap:1.5rem;">
+      <div>
+        <div class="card-title">Ingredients</div>
+        <ul class="ingredient-list">
+          ${(r.ingredients || []).map(ing => {
+            const inPantry = state.pantry.some(p => p.name.toLowerCase().includes(ing.i.toLowerCase().split(' ')[0]) || ing.i.toLowerCase().includes(p.name.toLowerCase()));
+            return `<li><span>${ing.i} ${inPantry ? '✓' : ''}</span><span style="color:var(--muted)">${ing.q} ${ing.c ? '· £'+ing.c.toFixed(2) : ''}</span></li>`;
+          }).join('')}
+        </ul>
+        <div style="margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid var(--border);font-size:0.82rem;color:var(--muted);">
+          Total ingredients: ${r.ingredients?.length || 0} | ✓ = in pantry
+        </div>
+      </div>
+      <div>
+        <div class="card-title">Method</div>
+        <ol class="step-list">
+          ${(r.steps || []).map(s => `<li>${s}</li>`).join('')}
+        </ol>
+      </div>
+    </div>
+    <div style="margin-top:1.25rem;display:flex;gap:0.75rem;flex-wrap:wrap;">
+      <button class="btn btn-primary" onclick="quickAddToPlanner(${r.id});closeModal('recipeDetailModal');">+ Add to Plan</button>
+      <button class="btn btn-secondary" onclick="addIngredientsToShop(${r.id});closeModal('recipeDetailModal');">🛒 Add to Shopping</button>
+      <button class="btn btn-secondary" onclick="closeModal('recipeDetailModal');openEditRecipe(${r.id});">✏️ Edit Recipe</button>
+      <button class="btn btn-danger" onclick="closeModal('recipeDetailModal');deleteRecipe(${r.id});">🗑 Delete</button>
+    </div>
+  `;
+  showModal('recipeDetailModal');
+}
+
+function addIngredientsToShop(recipeId) {
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return;
+  const pantryLower = state.pantry.map(p => p.name.toLowerCase());
+  const servings = recipe.servings || 2;
+  const scaleFactor = servings > 0 ? (2 / servings) : 1;
+  
+  (recipe.ingredients || []).forEach(ing => {
+    const inPantry = pantryLower.some(p => ing.i.toLowerCase().includes(p) || p.includes(ing.i.toLowerCase().split(' ')[0]));
+    if (!inPantry) {
+      const exists = state.shoppingList.some(i => i.name.toLowerCase() === ing.i.toLowerCase());
+      if (!exists) {
+        const { qty, cost, s } = getShopQtyAndCost(ing, scaleFactor);
+        state.shoppingList.push({ id: Date.now() + Math.random(), name: ing.i, qty, cost, section: s, checked: false });
+      }
+    }
+  });
+  saveState();
+  toast('Ingredients added to shopping list (sized for 2 people)!');
+}
+
+function saveNewRecipe() {
+  const name = document.getElementById('nr-name').value.trim();
+  if (!name) { alert('Please enter a recipe name'); return; }
+
+  const ingredients = (document.getElementById('nr-ingredients').value || '').split('\n').filter(l => l.trim()).map(line => {
+    const parts = line.split(',');
+    const qPart = parts[0]?.trim() || '';
+    const match = qPart.match(/^([\d.\/½¼¾]+\s*\w*)\s+(.*)/);
+    const cost = parseFloat(parts[1]?.replace('£','') || '0') || 0;
+    return { i: match ? match[2] : qPart, q: match ? match[1] : '', c: cost, s: '🌾 Dry Goods & Pasta' };
+  });
+
+  const steps = (document.getElementById('nr-steps').value || '').split('\n').filter(l => l.trim());
+  const maxId = Math.max(...state.recipes.map(r => r.id), 0);
+
+  const recipe = {
+    id: maxId + 1,
+    name,
+    type: document.getElementById('nr-type').value,
+    country: document.getElementById('nr-country').value,
+    cost: parseFloat(document.getElementById('nr-cost').value) || 0,
+    time: parseInt(document.getElementById('nr-time').value) || 30,
+    cals: parseInt(document.getElementById('nr-cals').value) || 400,
+    servings: parseInt(document.getElementById('nr-servings').value) || 4,
+    onePot: document.getElementById('nr-onepot').value === '1',
+    desc: document.getElementById('nr-desc').value,
+    ingredients,
+    steps,
+    custom: true
+  };
+
+  state.recipes.push(recipe);
+  saveState();
+  closeModal('addRecipeModal');
+  renderRecipes();
+  toast('Recipe added!');
+  // Clear form
+  ['nr-name','nr-country','nr-cost','nr-time','nr-cals','nr-desc','nr-ingredients','nr-steps'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+}
+
+function deleteRecipe(id) {
+  if (!confirm('Delete this recipe?')) return;
+  state.recipes = state.recipes.filter(r => r.id !== id);
+  // Remove from week plan
+  Object.keys(state.weekPlan).forEach(k => { if (state.weekPlan[k] === id) delete state.weekPlan[k]; });
+  saveState();
+  renderRecipes();
+  toast('Recipe deleted');
+  closeModal('recipeDetailModal');
+}
+
+function importFromUrl() {
+  const url = document.getElementById('importUrl').value.trim();
+  if (!url) { alert('Please enter a URL'); return; }
+  document.getElementById('importPreview').innerHTML = `
+    <div style="padding:1rem;background:var(--card);border-radius:8px;border:1px solid var(--border);">
+      <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.75rem;">⚠️ Automatic recipe extraction requires browser access to the site. Instead, fill in the recipe manually using the Add Recipe form, or copy-paste the key details below:</p>
+      <p style="font-size:0.82rem;color:var(--accent);">URL saved: <a href="${url}" target="_blank" style="color:var(--accent);">${url}</a></p>
+      <button class="btn btn-primary" style="margin-top:0.75rem;" onclick="closeModal('importUrlModal');showModal('addRecipeModal');">Open Manual Entry Form</button>
+    </div>
+  `;
+}
+
+// ===========================
+// PANTRY
+// ===========================
+const PANTRY_CATS = ['Dry Goods & Pasta','Rice & Grains','Baking & Flour','Tins & Jars','Dairy & Cheese','Eggs','Meat & Poultry','Fish & Seafood','Fresh Veg','Fresh Fruit','Herbs & Spices','Condiments & Sauces','Oils & Vinegar','Frozen','Bakery & Bread','Drinks & Alcohol','Sweet Treats & Snacks','Household'];
+
+function renderPantry() {
+  // Stats
+  document.getElementById('pantryStats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${state.pantry.length}</div><div class="stat-label">Total Items</div></div>
+    <div class="stat-card"><div class="stat-val">${state.pantry.filter(p=>p.cat==='Dairy & Cheese'||p.cat==='Eggs').length}</div><div class="stat-label">Dairy & Eggs</div></div>
+    <div class="stat-card"><div class="stat-val">${state.pantry.filter(p=>p.cat==='Fresh Veg'||p.cat==='Fresh Fruit').length}</div><div class="stat-label">Fresh Produce</div></div>
+    <div class="stat-card"><div class="stat-val">${countRecipesInPantry()}</div><div class="stat-label">Makeable Recipes</div></div>
+  `;
+
+  const grid = document.getElementById('pantryGrid');
+  if (state.pantry.length === 0) {
+    grid.innerHTML = `<div style="color:var(--muted);font-size:0.85rem;grid-column:1/-1;padding:2rem;text-align:center;">No pantry items yet. Add what you have at home, or tick items as bought on the Shopping List!</div>`;
+    return;
+  }
+  
+  // Group by category
+  const grouped = {};
+  PANTRY_CATS.forEach(c => { grouped[c] = []; });
+  state.pantry.forEach(item => {
+    const cat = item.cat || 'Dry Goods & Pasta';
+    if (!grouped[cat]) grouped[cat] = [];
+    grouped[cat].push(item);
+  });
+  
+  grid.innerHTML = Object.entries(grouped).filter(([,items]) => items.length > 0).map(([cat, items]) => `
+    <div style="grid-column: 1 / -1; margin-top: 0.75rem;">
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;padding-bottom:0.4rem;border-bottom:1px solid var(--border);">
+        <span style="font-size:0.75rem;font-weight:600;color:var(--accent2);text-transform:uppercase;letter-spacing:0.08em;flex:1;">${cat}</span>
+        <span style="font-size:0.7rem;color:var(--muted);">${items.length} item${items.length !== 1 ? 's' : ''}</span>
+        <button onclick="clearPantryCategory('${cat.replace(/'/g,"\\'")}')" style="background:none;border:1px solid var(--border);border-radius:4px;color:var(--red);font-size:0.68rem;padding:0.15rem 0.5rem;cursor:pointer;white-space:nowrap;" title="Remove all ${cat} items">Clear all</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:0.6rem;">
+        ${items.map(item => `
+          <div class="pantry-item">
+            <div>
+              <div class="pi-name">${item.name}</div>
+              <div class="pi-qty">${item.qty || ''}</div>
+            </div>
+            <button class="btn-icon" onclick="removePantryItem('${item.id}')">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function countRecipesInPantry() {
+  const pantryLower = state.pantry.map(p => p.name.toLowerCase());
+  return state.recipes.filter(r => r.ingredients?.every(ing =>
+    pantryLower.some(p => ing.i.toLowerCase().includes(p) || p.includes(ing.i.toLowerCase().split(' ')[0]))
+  )).length;
+}
+
+function addPantryItem() {
+  const name = document.getElementById('pi-name').value.trim();
+  if (!name) return;
+  state.pantry.push({
+    id: Date.now().toString(),
+    name,
+    qty: document.getElementById('pi-qty').value,
+    cat: document.getElementById('pi-cat').value
+  });
+  saveState();
+  closeModal('addPantryModal');
+  renderPantry();
+  toast(`${name} added to pantry!`);
+  document.getElementById('pi-name').value = '';
+  document.getElementById('pi-qty').value = '';
+}
+
+function removePantryItem(id) {
+  state.pantry = state.pantry.filter(p => p.id !== id);
+  saveState();
+  renderPantry();
+}
+
+function clearPantryCategory(cat) {
+  const count = state.pantry.filter(p => (p.cat || 'Dry Goods & Pasta') === cat).length;
+  if (!confirm(`Remove all ${count} item${count !== 1 ? 's' : ''} from ${cat}?`)) return;
+  state.pantry = state.pantry.filter(p => (p.cat || 'Dry Goods & Pasta') !== cat);
+  saveState();
+  renderPantry();
+  toast(`${cat} cleared!`);
+}
+
+// Maps ingredient quantities to real purchasable units at Sainsbury's
+function toPurchasableQty(ingredientName, originalQty, servings) {
+  const name = ingredientName.toLowerCase();
+  // Scale factor: recipes are for N servings, we want 2 people
+  // We don't change the qty string directly but note it serves 2
+  
+  // Return a real purchasable unit description
+  if (name.match(/\bgarlic\b/)) return '1 bulb (Sainsbury\'s ~£0.39)';
+  if (name.match(/onion/)) return '3 pack (~£0.65)';
+  if (name.match(/lemon/)) return '4 pack (~£0.60)';
+  if (name.match(/lime/)) return '4 pack (~£0.75)';
+  if (name.match(/ginger/)) return '1 piece (~150g, ~£0.45)';
+  if (name.match(/chilli|fresh chilli/)) return 'pack of 4 (~£0.50)';
+  if (name.match(/spring onion/)) return '1 bunch (~£0.50)';
+  if (name.match(/fresh coriander|fresh parsley|fresh basil|fresh mint|fresh dill|fresh thyme/)) return '1 pot/bunch (~£0.65)';
+  if (name.match(/shallot/)) return '500g bag (~£0.80)';
+  return null; // use original
+}
+
+function getShopQtyAndCost(ing, scaleFactor) {
+  const name = ing.i.toLowerCase();
+  // Purchasable real-world quantities & Sainsbury's prices for common items
+  const purchasable = [
+    // Veg
+    { match: /\bgarlic\b/, qty: '1 bulb', cost: 0.39, s: '🥦 Fresh Veg' },
+    { match: /\bonion\b|\bonions\b/, qty: '3 pack', cost: 0.65, s: '🥦 Fresh Veg' },
+    { match: /red onion/, qty: '3 pack', cost: 0.75, s: '🥦 Fresh Veg' },
+    { match: /spring onion/, qty: '1 bunch', cost: 0.50, s: '🥦 Fresh Veg' },
+    { match: /shallot/, qty: '500g bag', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /lemon/, qty: '4 pack', cost: 0.60, s: '🥦 Fresh Fruit' },
+    { match: /lime/, qty: '4 pack', cost: 0.75, s: '🥦 Fresh Fruit' },
+    { match: /ginger/, qty: '~150g piece', cost: 0.45, s: '🥦 Fresh Veg' },
+    { match: /fresh chilli|chilli pepper/, qty: 'pack of 4', cost: 0.50, s: '🥦 Fresh Veg' },
+    { match: /spring onion/, qty: '1 bunch', cost: 0.50, s: '🥦 Fresh Veg' },
+    { match: /carrot(?!s)/, qty: '1kg bag', cost: 0.50, s: '🥦 Fresh Veg' },
+    { match: /carrots/, qty: '1kg bag', cost: 0.50, s: '🥦 Fresh Veg' },
+    { match: /potato(?!es)/, qty: '2kg bag', cost: 1.00, s: '🥦 Fresh Veg' },
+    { match: /potatoes|new potatoes/, qty: '1kg bag', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /tomato(?!es)(?! paste)/, qty: '6 pack vine', cost: 0.75, s: '🥦 Fresh Veg' },
+    { match: /cherry tomato/, qty: '400g punnet', cost: 0.90, s: '🥦 Fresh Veg' },
+    { match: /red pepper|green pepper|yellow pepper|peppers/, qty: '3 pack mixed', cost: 1.00, s: '🥦 Fresh Veg' },
+    { match: /mushroom/, qty: '400g pack', cost: 0.90, s: '🥦 Fresh Veg' },
+    { match: /spinach/, qty: '200g bag', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /leek/, qty: '2 pack', cost: 0.70, s: '🥦 Fresh Veg' },
+    { match: /courgette/, qty: '2 pack', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /aubergine/, qty: '1', cost: 0.70, s: '🥦 Fresh Veg' },
+    { match: /celery/, qty: '1 head', cost: 0.65, s: '🥦 Fresh Veg' },
+    { match: /cucumber/, qty: '1', cost: 0.55, s: '🥦 Fresh Veg' },
+    { match: /lettuce|romaine/, qty: '1 head', cost: 0.70, s: '🥦 Fresh Veg' },
+    { match: /mixed leaves/, qty: '120g bag', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /asparagus/, qty: '250g pack', cost: 1.50, s: '🥦 Fresh Veg' },
+    { match: /broccoli/, qty: '1 head', cost: 0.65, s: '🥦 Fresh Veg' },
+    { match: /sweet potato/, qty: '3 pack', cost: 0.90, s: '🥦 Fresh Veg' },
+    { match: /pak choi/, qty: '2 pack', cost: 0.80, s: '🥦 Fresh Veg' },
+    { match: /bean sprout/, qty: '300g bag', cost: 0.80, s: '🥦 Fresh Veg' },
+    // Fruit
+    { match: /avocado/, qty: '2 pack', cost: 1.00, s: '🥦 Fresh Fruit' },
+    { match: /banana/, qty: '5 pack', cost: 0.65, s: '🥦 Fresh Fruit' },
+    { match: /apple/, qty: '6 pack', cost: 1.00, s: '🥦 Fresh Fruit' },
+    { match: /mixed berr|berries/, qty: '200g pack', cost: 1.50, s: '🥦 Fresh Fruit' },
+    { match: /passion fruit/, qty: '2 pack', cost: 0.80, s: '🥦 Fresh Fruit' },
+    // Herbs (fresh)
+    { match: /fresh coriander/, qty: '30g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /fresh parsley/, qty: '30g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /fresh basil/, qty: '30g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /fresh thyme|thyme sprigs/, qty: '20g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /fresh mint/, qty: '20g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /fresh dill/, qty: '20g pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    // Meat
+    { match: /chicken breast/, qty: '650g pack (2 fillets)', cost: 3.50, s: '🥩 Meat & Fish' },
+    { match: /chicken thigh/, qty: '1kg pack', cost: 3.00, s: '🥩 Meat & Fish' },
+    { match: /chicken wings/, qty: '1kg pack', cost: 3.00, s: '🥩 Meat & Fish' },
+    { match: /whole chicken/, qty: '~1.5kg', cost: 4.50, s: '🥩 Meat & Fish' },
+    { match: /beef mince/, qty: '500g pack', cost: 3.00, s: '🥩 Meat & Fish' },
+    { match: /pork mince/, qty: '500g pack', cost: 2.50, s: '🥩 Meat & Fish' },
+    { match: /lamb mince/, qty: '500g pack', cost: 3.80, s: '🥩 Meat & Fish' },
+    { match: /pork sausage/, qty: '6 pack (450g)', cost: 2.50, s: '🥩 Meat & Fish' },
+    { match: /bacon|streaky bacon/, qty: '250g pack', cost: 1.80, s: '🥩 Meat & Fish' },
+    { match: /bacon lardon/, qty: '200g pack', cost: 1.50, s: '🥩 Meat & Fish' },
+    { match: /chorizo/, qty: '200g', cost: 2.00, s: '🥩 Meat & Fish' },
+    { match: /pancetta/, qty: '150g pack', cost: 1.80, s: '🥩 Meat & Fish' },
+    { match: /smoked salmon/, qty: '100g pack', cost: 2.00, s: '🥩 Meat & Fish' },
+    { match: /salmon fillet/, qty: '2 fillets (~280g)', cost: 4.50, s: '🥩 Meat & Fish' },
+    { match: /cod fillet/, qty: '2 fillets (~280g)', cost: 4.00, s: '🥩 Meat & Fish' },
+    { match: /smoked haddock/, qty: '400g pack', cost: 3.50, s: '🥩 Meat & Fish' },
+    { match: /king prawn|prawns?/, qty: '180g pack', cost: 3.00, s: '🥩 Meat & Fish' },
+    { match: /mixed fish/, qty: '400g pack', cost: 4.50, s: '🥩 Meat & Fish' },
+    { match: /ham hock/, qty: '1 (approx 800g)', cost: 3.00, s: '🥩 Meat & Fish' },
+    { match: /sirloin steak/, qty: '2 x 225g steaks', cost: 8.00, s: '🥩 Meat & Fish' },
+    { match: /beef steak/, qty: '500g pack', cost: 5.00, s: '🥩 Meat & Fish' },
+    { match: /beef shin|stewing steak/, qty: '750g pack', cost: 4.50, s: '🥩 Meat & Fish' },
+    { match: /pork belly/, qty: '500g piece', cost: 3.50, s: '🥩 Meat & Fish' },
+    { match: /pork shoulder/, qty: '1.2kg', cost: 4.00, s: '🥩 Meat & Fish' },
+    { match: /lamb shoulder/, qty: '~1kg', cost: 5.50, s: '🥩 Meat & Fish' },
+    // Dairy
+    { match: /\begg\b|\beggs\b/, qty: '6 pack (free range)', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /milk/, qty: '2 pint (1.136L) semi-skimmed', cost: 1.10, s: '🥛 Dairy & Eggs' },
+    { match: /butter/, qty: '250g pack', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /double cream/, qty: '300ml pot', cost: 1.50, s: '🥛 Dairy & Eggs' },
+    { match: /single cream|cream/, qty: '300ml pot', cost: 1.20, s: '🥛 Dairy & Eggs' },
+    { match: /greek yogurt|yogurt/, qty: '500g pot', cost: 1.50, s: '🥛 Dairy & Eggs' },
+    { match: /sour cream/, qty: '300ml pot', cost: 1.00, s: '🥛 Dairy & Eggs' },
+    { match: /cheddar/, qty: '400g block', cost: 2.50, s: '🥛 Dairy & Eggs' },
+    { match: /parmesan/, qty: '60g pack (grated) or 100g piece', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /mozzarella/, qty: '2 x 125g balls', cost: 2.00, s: '🥛 Dairy & Eggs' },
+    { match: /feta/, qty: '200g block', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /halloumi/, qty: '225g pack', cost: 2.50, s: '🥛 Dairy & Eggs' },
+    { match: /mascarpone/, qty: '250g tub', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /cream cheese/, qty: '200g tub', cost: 1.10, s: '🥛 Dairy & Eggs' },
+    { match: /gruyere/, qty: '150g pack', cost: 3.00, s: '🥛 Dairy & Eggs' },
+    { match: /paneer/, qty: '227g block', cost: 2.00, s: '🥛 Dairy & Eggs' },
+    // Bread & Bakery
+    { match: /sourdough|sourdough bread/, qty: '400g loaf', cost: 1.20, s: '🥖 Bakery & Bread' },
+    { match: /bread(?! flour)/, qty: '800g medium sliced loaf', cost: 1.10, s: '🥖 Bakery & Bread' },
+    { match: /bagel/, qty: '4 pack', cost: 1.25, s: '🥖 Bakery & Bread' },
+    { match: /pita|pitta/, qty: '6 pack', cost: 0.85, s: '🥖 Bakery & Bread' },
+    { match: /tortilla wrap|flour tortilla/, qty: '8 pack', cost: 1.00, s: '🥖 Bakery & Bread' },
+    { match: /burger bun/, qty: '4 pack', cost: 0.85, s: '🥖 Bakery & Bread' },
+    { match: /brioche bun/, qty: '4 pack', cost: 1.25, s: '🥖 Bakery & Bread' },
+    { match: /taco shell/, qty: '12 pack', cost: 1.50, s: '🥖 Bakery & Bread' },
+    { match: /flatbread/, qty: '4 pack', cost: 0.90, s: '🥖 Bakery & Bread' },
+    // Tins & Jars
+    { match: /tinned tomato|chopped tomato/, qty: '2 x 400g tins', cost: 0.80, s: '🥫 Tins & Jars' },
+    { match: /tomato passata/, qty: '680g jar', cost: 0.75, s: '🥫 Tins & Jars' },
+    { match: /baked bean/, qty: '2 x 415g tins', cost: 0.80, s: '🥫 Tins & Jars' },
+    { match: /kidney bean/, qty: '400g tin', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /chickpea/, qty: '400g tin', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /butter bean/, qty: '400g tin', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /haricot bean/, qty: '400g tin', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /coconut milk/, qty: '400ml tin', cost: 1.00, s: '🥫 Tins & Jars' },
+    { match: /\btuna\b/, qty: '3 x 145g tins in spring water', cost: 1.80, s: '🥫 Tins & Jars' },
+    { match: /sweetcorn/, qty: '326g tin (drained)', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /olives/, qty: '200g jar', cost: 1.20, s: '🥫 Tins & Jars' },
+    { match: /mushy pea/, qty: '400g tin', cost: 0.45, s: '🥫 Tins & Jars' },
+    { match: /falafel/, qty: '200g pack', cost: 1.50, s: '🥫 Tins & Jars' },
+    // Dry goods
+    { match: /spaghetti/, qty: '500g pack', cost: 0.70, s: '🌾 Dry Goods & Pasta' },
+    { match: /pasta(?! sauce)/, qty: '500g pack', cost: 0.65, s: '🌾 Dry Goods & Pasta' },
+    { match: /lasagne sheet/, qty: '500g pack', cost: 0.80, s: '🌾 Dry Goods & Pasta' },
+    { match: /tagliatelle/, qty: '500g pack', cost: 0.70, s: '🌾 Dry Goods & Pasta' },
+    { match: /egg noodle|chow mein noodle|rice noodle/, qty: '300g pack', cost: 0.80, s: '🌾 Dry Goods & Pasta' },
+    { match: /ramen noodle/, qty: '400g pack', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /gyoza wrapper/, qty: '30 pack', cost: 2.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /basmati rice|jasmine rice|sushi rice|paella rice/, qty: '1kg bag', cost: 1.50, s: '🍚 Rice & Grains' },
+    { match: /\brice\b/, qty: '1kg bag long grain', cost: 0.95, s: '🍚 Rice & Grains' },
+    { match: /arborio rice/, qty: '500g pack', cost: 1.50, s: '🍚 Rice & Grains' },
+    { match: /couscous/, qty: '500g pack', cost: 1.10, s: '🍚 Rice & Grains' },
+    { match: /red lentil|green lentil|yellow lentil|split pea/, qty: '500g bag', cost: 0.80, s: '🌾 Dry Goods & Pasta' },
+    { match: /rolled oat/, qty: '1kg bag', cost: 0.85, s: '🌾 Dry Goods & Pasta' },
+    { match: /granola/, qty: '500g bag', cost: 1.80, s: '🌾 Dry Goods & Pasta' },
+    { match: /breadcrumb|panko/, qty: '200g pack', cost: 0.90, s: '🌾 Dry Goods & Pasta' },
+    { match: /plain flour|strong bread flour|self raising flour/, qty: '1.5kg bag', cost: 1.00, s: '🫙 Baking & Flour' },
+    { match: /caster sugar|brown sugar|dark brown sugar/, qty: '1kg bag', cost: 0.90, s: '🫙 Baking & Flour' },
+    { match: /puff pastry|shortcrust pastry|filo pastry/, qty: '320g sheet/pack', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /filo/, qty: '270g pack (~12 sheets)', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /dark chocolate/, qty: '100g bar', cost: 1.20, s: '🫙 Baking & Flour' },
+    // Spices (come in jars/packets — buy whole jar)
+    { match: /cumin|paprika|turmeric|coriander powder|garam masala|chilli powder|cinnamon|oregano|mixed herbs|curry powder/, qty: '1 jar/pack (~40g)', cost: 0.80, s: '🌶 Herbs & Spices' },
+    { match: /black pepper/, qty: 'grinder or 25g pack', cost: 0.75, s: '🌶 Herbs & Spices' },
+    { match: /salt/, qty: '750g pot', cost: 0.35, s: '🌶 Herbs & Spices' },
+    { match: /saffron/, qty: '0.4g sachet', cost: 1.00, s: '🌶 Herbs & Spices' },
+    { match: /star anise/, qty: '10g jar', cost: 0.80, s: '🌶 Herbs & Spices' },
+    { match: /vanilla/, qty: '1 pod or 38ml extract', cost: 0.80, s: '🌶 Herbs & Spices' },
+    // Condiments
+    { match: /soy sauce/, qty: '150ml bottle', cost: 0.80, s: '🧴 Condiments & Sauces' },
+    { match: /oyster sauce/, qty: '255g bottle', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /fish sauce/, qty: '200ml bottle', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /sesame oil/, qty: '150ml bottle', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /olive oil/, qty: '500ml bottle', cost: 2.50, s: '🧴 Condiments & Sauces' },
+    { match: /vegetable oil/, qty: '1L bottle', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /ketchup|tomato ketchup/, qty: '500g squeeze bottle', cost: 1.10, s: '🧴 Condiments & Sauces' },
+    { match: /mayonnaise|mayo/, qty: '400g jar', cost: 1.40, s: '🧴 Condiments & Sauces' },
+    { match: /dijon mustard/, qty: '200g jar', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /honey/, qty: '340g jar', cost: 2.00, s: '🧴 Condiments & Sauces' },
+    { match: /maple syrup/, qty: '330ml bottle', cost: 3.50, s: '🧴 Condiments & Sauces' },
+    { match: /pesto/, qty: '190g jar', cost: 1.80, s: '🧴 Condiments & Sauces' },
+    { match: /tikka masala paste|curry paste|green curry paste/, qty: '1 jar (283g)', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /tikka masala sauce/, qty: '1 jar (350g)', cost: 1.80, s: '🧴 Condiments & Sauces' },
+    { match: /bbq sauce/, qty: '490g bottle', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /sweet chilli sauce/, qty: '220ml bottle', cost: 1.00, s: '🧴 Condiments & Sauces' },
+    { match: /jerk paste/, qty: '280g jar', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /miso paste/, qty: '200g tub', cost: 2.00, s: '🧴 Condiments & Sauces' },
+    { match: /tahini/, qty: '270g jar', cost: 2.00, s: '🧴 Condiments & Sauces' },
+    { match: /hummus/, qty: '200g tub', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /guacamole/, qty: '150g pot', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /tzatziki/, qty: '200g tub', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /tamarind paste/, qty: '200g block or 120ml paste', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    { match: /mirin/, qty: '150ml bottle', cost: 1.80, s: '🧴 Condiments & Sauces' },
+    { match: /gochujang/, qty: '200g tub', cost: 2.50, s: '🧴 Condiments & Sauces' },
+    { match: /worcestershire/, qty: '150ml bottle', cost: 1.00, s: '🧴 Condiments & Sauces' },
+    { match: /capers/, qty: '100g jar', cost: 0.90, s: '🧴 Condiments & Sauces' },
+    { match: /red wine vinegar|white wine vinegar/, qty: '350ml bottle', cost: 0.80, s: '🧴 Condiments & Sauces' },
+    { match: /balsamic/, qty: '250ml bottle', cost: 1.20, s: '🧴 Condiments & Sauces' },
+    // Stock
+    { match: /vegetable stock|chicken stock|beef stock|lamb stock/, qty: '1L carton or 8 cube pack', cost: 0.80, s: '🧴 Condiments & Sauces' },
+    // Frozen
+    { match: /frozen peas/, qty: '900g bag', cost: 0.85, s: '🧊 Frozen' },
+    { match: /frozen edamame|edamame/, qty: '500g bag', cost: 1.80, s: '🧊 Frozen' },
+    { match: /ice cream/, qty: '500ml tub', cost: 2.00, s: '🧊 Frozen' },
+    // Drinks
+    { match: /red wine/, qty: '750ml bottle', cost: 5.00, s: '🧃 Drinks & Alcohol' },
+    { match: /white wine/, qty: '750ml bottle', cost: 5.00, s: '🧃 Drinks & Alcohol' },
+    { match: /beer|ale/, qty: '4 x 330ml cans', cost: 4.00, s: '🧃 Drinks & Alcohol' },
+    { match: /sparkling water/, qty: '1L bottle', cost: 0.35, s: '🧃 Drinks & Alcohol' },
+    { match: /apple juice/, qty: '1L carton', cost: 1.00, s: '🧃 Drinks & Alcohol' },
+    { match: /brandy/, qty: '70cl bottle', cost: 8.00, s: '🧃 Drinks & Alcohol' },
+    // Other
+    { match: /katsu curry sauce/, qty: '1 packet/jar', cost: 1.80, s: '🧴 Condiments & Sauces' },
+    { match: /fajita seasoning|taco seasoning/, qty: '1 sachet pack', cost: 0.80, s: '🌶 Herbs & Spices' },
+    { match: /pine nut/, qty: '50g pack', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /cashew|peanut|nut(?!meg)/, qty: '200g bag', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /sesame seed/, qty: '100g pot', cost: 0.80, s: '🌶 Herbs & Spices' },
+    { match: /dashi stock/, qty: '2 sachets (makes 1L)', cost: 1.50, s: '🧴 Condiments & Sauces' },
+    { match: /nori/, qty: '10 sheet pack', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /tofu/, qty: '396g block firm', cost: 1.80, s: '🥛 Dairy & Eggs' },
+    { match: /mussels/, qty: '500g pack', cost: 2.50, s: '🥩 Meat & Fish' },
+    { match: /preserved lemon/, qty: '200g jar', cost: 2.00, s: '🥫 Tins & Jars' },
+    { match: /dried apricot/, qty: '500g bag', cost: 1.80, s: '🌾 Dry Goods & Pasta' },
+    { match: /dates/, qty: '200g pack', cost: 1.50, s: '🌾 Dry Goods & Pasta' },
+    { match: /ladyfinger|savoiardi/, qty: '200g pack', cost: 2.00, s: '🌾 Dry Goods & Pasta' },
+    { match: /cornflour/, qty: '500g pack', cost: 0.60, s: '🫙 Baking & Flour' },
+    { match: /baking powder|baking soda/, qty: '200g tub', cost: 0.60, s: '🫙 Baking & Flour' },
+    { match: /cocoa powder/, qty: '200g tin', cost: 1.50, s: '🫙 Baking & Flour' },
+    { match: /yeast/, qty: '7g sachet (2 pack)', cost: 0.60, s: '🫙 Baking & Flour' },
+    { match: /custard/, qty: '500g tin', cost: 0.80, s: '🍚 Rice & Grains' },
+    { match: /lemongrass/, qty: '3 stalks pack', cost: 0.65, s: '🌶 Herbs & Spices' },
+    { match: /kaffir lime leaf/, qty: '10g pack (frozen/fresh)', cost: 0.80, s: '🌶 Herbs & Spices' },
+  ];
+
+  for (const rule of purchasable) {
+    if (rule.match.test(name)) {
+      return { qty: rule.qty, cost: rule.cost, s: rule.s };
+    }
+  }
+  // fallback: scale cost
+  return { qty: ing.q, cost: (ing.c || 0) * scaleFactor, s: ing.s };
+}
+
+function renderShoppingList() {
+  const container = document.getElementById('shoppingList');
+  
+  if (state.shoppingList.length === 0) {
+    container.innerHTML = `<div style="color:var(--muted);text-align:center;padding:3rem;font-size:0.9rem;">Shopping list is empty. Generate from your week plan or add items manually.</div>`;
+    document.getElementById('shopTotal').textContent = '£0.00';
+    return;
+  }
+
+  // Group by section
+  const sections = {};
+  SHOP_SECTIONS.forEach(s => { sections[s] = []; });
+  state.shoppingList.forEach(item => {
+    const sec = item.section || '🌾 Dry Goods & Pasta';
+    if (!sections[sec]) sections[sec] = [];
+    sections[sec].push(item);
+  });
+
+  let total = 0;
+  state.shoppingList.forEach(i => { if (!i.checked) total += i.cost || 0; });
+  document.getElementById('shopTotal').textContent = '£' + total.toFixed(2);
+
+  container.innerHTML = Object.entries(sections)
+    .filter(([,items]) => items.length > 0)
+    .map(([section, items]) => `
+      <div class="shop-section">
+        <div class="shop-section-title">${section} <span style="font-size:0.75rem;color:var(--muted);">(${items.length})</span></div>
+        ${items.map(item => {
+          const inPantry = state.pantry.some(p => p.name.toLowerCase() === item.name.toLowerCase());
+          return `
+          <div class="shop-item ${item.checked ? 'checked' : ''}" id="si-${item.id}">
+            <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleShopItem('${item.id}')">
+            <div class="si-name">${item.name}</div>
+            <input type="text" value="${item.qty || ''}" onchange="updateShopQty('${item.id}',this.value)" style="width:80px;flex-shrink:0;font-size:0.75rem;padding:0.25rem 0.4rem;background:var(--bg);border:1px solid var(--border);color:var(--muted);border-radius:4px;" placeholder="qty">
+            ${inPantry ? '<span style="font-size:0.68rem;color:var(--green);background:rgba(106,177,135,0.15);padding:0.1rem 0.4rem;border-radius:4px;white-space:nowrap;flex-shrink:0;">🥫 in pantry</span>' : ''}
+            <div class="si-cost" style="flex-shrink:0;">${item.cost ? '~£'+parseFloat(item.cost).toFixed(2) : ''}</div>
+            <button class="btn-icon" onclick="removeShopItem('${item.id}')" style="flex-shrink:0;">✕</button>
+          </div>
+        `}).join('')}
+      </div>
+    `).join('');
+
+  updateConfirmBar();
+}
+
+function toggleShopItem(id) {
+  const item = state.shoppingList.find(i => String(i.id) === String(id));
+  if (!item) return;
+  item.checked = !item.checked;
+  saveState();
+  renderShoppingList();
+  updateConfirmBar();
+}
+
+function updateConfirmBar() {
+  const bar = document.getElementById('confirmPantryBar');
+  const count = document.getElementById('checkedCount');
+  if (!bar) return;
+  const checked = state.shoppingList.filter(i => i.checked && !state.pantry.some(p => p.name.toLowerCase() === i.name.toLowerCase()));
+  if (checked.length > 0) {
+    bar.classList.add('visible');
+    count.textContent = `${checked.length} item${checked.length > 1 ? 's' : ''} to add`;
+  } else {
+    bar.classList.remove('visible');
+  }
+}
+
+function confirmAllChecked() {
+  const checkedItems = state.shoppingList.filter(i => i.checked);
+  let added = 0;
+  checkedItems.forEach(item => {
+    const alreadyInPantry = state.pantry.some(p => p.name.toLowerCase() === item.name.toLowerCase());
+    if (!alreadyInPantry) {
+      const cat = guessPantryCategory(item.section || '', item.name);
+      state.pantry.push({ id: 'shop_' + Date.now() + Math.random(), name: item.name, qty: item.qty || '', cat });
+      added++;
+    }
+  });
+  saveState();
+  renderShoppingList();
+  renderPantry();
+  updateConfirmBar();
+  toast(`✅ ${added} item${added !== 1 ? 's' : ''} added to pantry!`);
+}
+
+function guessPantryCategory(section, name) {
+  const n = name.toLowerCase();
+  const s = section.toLowerCase();
+  if (s.includes('meat') || s.includes('fish') || n.match(/chicken|beef|pork|lamb|mince|bacon|sausage|steak|salmon|cod|tuna|prawn|fish|haddock|chorizo/)) {
+    if (n.match(/salmon|cod|haddock|prawn|tuna|fish|seafood/)) return 'Fish & Seafood';
+    return 'Meat & Poultry';
+  }
+  if (s.includes('dairy') || n.match(/milk|cheese|butter|cream|yogurt|cheddar|mozzarella|parmesan|halloumi|feta|mascarpone|gruyere/)) return 'Dairy & Cheese';
+  if (n.match(/\begg\b|\beggs\b/)) return 'Eggs';
+  if (s.includes('frozen') || n.match(/frozen|ice cream/)) return 'Frozen';
+  if (s.includes('bakery') || n.match(/bread|bagel|pita|tortilla|wrap|bun|roll|sourdough/)) return 'Bakery & Bread';
+  if (s.includes('fresh veg') || n.match(/onion|garlic|potato|carrot|leek|pepper|tomato|mushroom|lettuce|spinach|courgette|broccoli|aubergine|celery|asparagus|cucumber/)) return 'Fresh Veg';
+  if (s.includes('fresh fruit') || n.match(/apple|banana|lemon|lime|berry|berries|avocado|orange|mango|passion/)) return 'Fresh Fruit';
+  if (s.includes('herbs') || n.match(/cumin|paprika|turmeric|oregano|thyme|rosemary|cinnamon|chilli|pepper|salt|basil|dill|parsley|coriander|ginger|spice/)) return 'Herbs & Spices';
+  if (s.includes('tins') || n.match(/tin|tinned|canned|beans|lentils|chickpea|coconut milk/)) return 'Tins & Jars';
+  if (s.includes('baking') || n.match(/flour|sugar|baking|yeast|vanilla|cocoa/)) return 'Baking & Flour';
+  if (s.includes('dry goods') || n.match(/pasta|noodle|rice|oat|grain|lentil|split pea/)) {
+    if (n.match(/rice|grain|couscous|quinoa|bulgur/)) return 'Rice & Grains';
+    return 'Dry Goods & Pasta';
+  }
+  if (s.includes('drinks') || n.match(/wine|beer|juice|cola|water|stock/)) return 'Drinks & Alcohol';
+  if (s.includes('condiments') || n.match(/sauce|ketchup|mustard|mayo|soy|oil|vinegar|pesto|miso|tahini/)) {
+    if (n.match(/oil|vinegar/)) return 'Oils & Vinegar';
+    return 'Condiments & Sauces';
+  }
+  return 'Dry Goods & Pasta';
+}
+
+function updateShopQty(id, val) {
+  const item = state.shoppingList.find(i => String(i.id) === String(id));
+  if (item) { item.qty = val; saveState(); }
+}
+
+function removeShopItem(id) {
+  state.shoppingList = state.shoppingList.filter(i => String(i.id) !== String(id));
+  saveState();
+  renderShoppingList();
+}
+
+
+function uncheckAll() {
+  state.shoppingList.forEach(i => i.checked = false);
+  saveState();
+  renderShoppingList();
+}
+
+function removeChecked() {
+  state.shoppingList = state.shoppingList.filter(i => !i.checked);
+  saveState();
+  renderShoppingList();
+  toast('Checked items removed!');
+}
+
+function addManualShopItem() {
+  const name = document.getElementById('si-name').value.trim();
+  if (!name) return;
+  // Auto-detect qty, cost and section using the same purchasable rules
+  const { qty, cost, s } = getShopQtyAndCost({ i: name, q: '', c: 0, s: '🌾 Dry Goods & Pasta' }, 1);
+  state.shoppingList.push({
+    id: Date.now() + Math.random(),
+    name,
+    qty,
+    cost,
+    section: s,
+    checked: false
+  });
+  saveState();
+  closeModal('addShopItemModal');
+  renderShoppingList();
+  toast(`${name} added!`);
+  document.getElementById('si-name').value = '';
+  document.getElementById('si-preview').style.display = 'none';
+}
+
+function previewShopItem() {
+  const name = document.getElementById('si-name').value.trim();
+  const preview = document.getElementById('si-preview');
+  if (!name) { preview.style.display = 'none'; return; }
+  const { qty, cost, s } = getShopQtyAndCost({ i: name, q: '', c: 0, s: '🌾 Dry Goods & Pasta' }, 1);
+  preview.style.display = 'block';
+  preview.innerHTML = `<span style="color:var(--text);font-weight:500;">${name}</span> &nbsp;·&nbsp; ${qty} &nbsp;·&nbsp; <span style="color:var(--green);font-weight:600;">~£${cost.toFixed(2)}</span> &nbsp;·&nbsp; ${s}`;
+}
+
+function printShoppingList() {
+  window.print();
+}
+
+// ===========================
+// EDIT RECIPE
+// ===========================
+function openEditRecipe(id) {
+  const r = state.recipes.find(rc => rc.id === id);
+  if (!r) return;
+  document.getElementById('er-id').value = id;
+  document.getElementById('er-name').value = r.name || '';
+  document.getElementById('er-type').value = r.type || 'Dinner';
+  document.getElementById('er-country').value = r.country || '';
+  document.getElementById('er-cost').value = r.cost || '';
+  document.getElementById('er-time').value = r.time || '';
+  document.getElementById('er-cals').value = r.cals || '';
+  document.getElementById('er-servings').value = r.servings || 4;
+  document.getElementById('er-onepot').value = r.onePot ? '1' : '0';
+  document.getElementById('er-desc').value = r.desc || '';
+  // Format ingredients back to text
+  document.getElementById('er-ingredients').value = (r.ingredients || []).map(ing => `${ing.q} ${ing.i}, £${ing.c?.toFixed(2) || '0'}`).join('\n');
+  document.getElementById('er-steps').value = (r.steps || []).join('\n');
+  showModal('editRecipeModal');
+}
+
+function saveEditedRecipe() {
+  const id = parseInt(document.getElementById('er-id').value);
+  const idx = state.recipes.findIndex(r => r.id === id);
+  if (idx === -1) return;
+  const name = document.getElementById('er-name').value.trim();
+  if (!name) { alert('Please enter a recipe name'); return; }
+  const ingredients = (document.getElementById('er-ingredients').value || '').split('\n').filter(l => l.trim()).map(line => {
+    const parts = line.split(',');
+    const qPart = parts[0]?.trim() || '';
+    const match = qPart.match(/^([\d.\/½¼¾]+\s*\w*)\s+(.*)/);
+    const cost = parseFloat(parts[1]?.replace('£','') || '0') || 0;
+    return { i: match ? match[2] : qPart, q: match ? match[1] : '', c: cost, s: state.recipes[idx].ingredients?.find(x => x.i.toLowerCase() === (match ? match[2] : qPart).toLowerCase())?.s || '🌾 Dry Goods & Pasta' };
+  });
+  const steps = (document.getElementById('er-steps').value || '').split('\n').filter(l => l.trim());
+  state.recipes[idx] = {
+    ...state.recipes[idx],
+    name,
+    type: document.getElementById('er-type').value,
+    country: document.getElementById('er-country').value,
+    cost: parseFloat(document.getElementById('er-cost').value) || 0,
+    time: parseInt(document.getElementById('er-time').value) || 30,
+    cals: parseInt(document.getElementById('er-cals').value) || 400,
+    servings: parseInt(document.getElementById('er-servings').value) || 4,
+    onePot: document.getElementById('er-onepot').value === '1',
+    desc: document.getElementById('er-desc').value,
+    ingredients,
+    steps,
+  };
+  saveState();
+  closeModal('editRecipeModal');
+  renderRecipes();
+  renderWeekGrid();
+  toast('Recipe updated!');
+}
+
+// ===========================
+// MEAL MADE
+// ===========================
+let pendingMealMade = null;
+
+function openMealMadeModal(day, mType) {
+  const key = `${day}_${mType}`;
+  if (state.mealsMade && state.mealsMade[key]) {
+    // Untoggle
+    delete state.mealsMade[key];
+    saveState();
+    renderWeekGrid();
+    toast('Meal unmarked');
+    return;
+  }
+  const recipeId = state.weekPlan[key];
+  const recipe = state.recipes.find(r => r.id === recipeId);
+  if (!recipe) return;
+  pendingMealMade = { day, mType, key, recipe };
+  const ingList = (recipe.ingredients || []).map(ing => {
+    const inPantry = state.pantry.some(p => p.name.toLowerCase().includes(ing.i.toLowerCase()) || ing.i.toLowerCase().includes(p.name.toLowerCase()));
+    return `<div style="display:flex;justify-content:space-between;padding:0.4rem 0;border-bottom:1px solid var(--border);font-size:0.83rem;">
+      <span>${ing.i} ${inPantry ? '<span style="color:var(--green);font-size:0.7rem;">✓ in pantry</span>' : ''}</span>
+      <span style="color:var(--muted);">${ing.q}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('mealMadeIngredients').innerHTML = ingList || '<p style="color:var(--muted);">No ingredients listed.</p>';
+  showModal('mealMadeModal');
+}
+
+function confirmMealMade() {
+  if (!pendingMealMade) return;
+  const { key, recipe } = pendingMealMade;
+  if (!state.mealsMade) state.mealsMade = {};
+  state.mealsMade[key] = true;
+  // Subtract ingredients from pantry where they exist
+  (recipe.ingredients || []).forEach(ing => {
+    const idx = state.pantry.findIndex(p => p.name.toLowerCase().includes(ing.i.toLowerCase().split(' ').slice(-1)[0]) || ing.i.toLowerCase().includes(p.name.toLowerCase()));
+    if (idx !== -1) {
+      state.pantry.splice(idx, 1);
+    }
+  });
+  saveState();
+  closeModal('mealMadeModal');
+  renderWeekGrid();
+  renderPantry();
+  toast(`✅ ${recipe.name} marked as made! Pantry updated.`);
+  pendingMealMade = null;
+}
+
+// ===========================
+// SHOPPING LIST - CHECK ALL & EDITABLE QTY
+// ===========================
+function checkAll() {
+  state.shoppingList.forEach(item => { item.checked = true; });
+  saveState();
+  renderShoppingList();
+  updateConfirmBar();
+  toast('All items ticked — press "Add Checked to Pantry" to confirm!');
+}
+
+// ===========================
+// INIT
+// ===========================
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  renderWeekGrid();
+  // Pre-populate filter countries after recipes loaded
+  const countrySelect = document.getElementById('filterCountry');
+  if (countrySelect) {
+    const countries = [...new Set(state.recipes.map(r => r.country).filter(Boolean))].sort();
+    countries.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c; opt.textContent = c;
+      countrySelect.appendChild(opt);
+    });
+  }
+});
+</script></body></html>
