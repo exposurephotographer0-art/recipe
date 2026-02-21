@@ -594,26 +594,37 @@ const DEFAULT_RECIPES = [
   },
 ];
 
-// ════════ STATE ════════
-const DAYS = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
-const API = 'https://d1-template.exposurephotographer0.workers.dev';
+// ════════ CONFIG ════════
+const API   = 'https://d1-template.exposurephotographer0.workers.dev';
+const DAYS  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+// ════════ STATE ════════
 let state = { meals:{}, recipes:[], shoppingList:[], pantry:[] };
 let editingDay = null, pickerDay = null;
 let ingredientCount = 0, recIngCount = 0;
 let editingRecipeId = null, editingPantryIdx = null;
 
+// ════════ API LAYER ════════
 async function apiFetch(path, opts = {}) {
   const resp = await fetch(API + path, {
     headers: { 'Content-Type': 'application/json' },
     ...opts,
   });
-  if (!resp.ok) throw new Error(`API error ${resp.status} on ${path}`);
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '');
+    throw new Error(`Worker error ${resp.status} on ${path}: ${body}`);
+  }
   return resp.json();
 }
 
-async function loadState() {
-  showLoadingOverlay(true);
+// ════════ INIT ════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // Wire up modal close-on-backdrop-click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+  });
+
+  showLoading(true);
   try {
     const [recipes, meals, pantry, shopping] = await Promise.all([
       apiFetch('/api/recipes'),
@@ -621,8 +632,9 @@ async function loadState() {
       apiFetch('/api/pantry'),
       apiFetch('/api/shopping'),
     ]);
-    // Seed default recipes if DB is empty
-    if (recipes.length === 0) {
+
+    // Seed default recipes on first load
+    if (!recipes.length) {
       await Promise.all(DEFAULT_RECIPES.map(r =>
         apiFetch('/api/recipes', { method:'POST', body: JSON.stringify(r) })
       ));
@@ -630,46 +642,98 @@ async function loadState() {
     } else {
       state.recipes = recipes;
     }
-    state.meals = meals;
-    state.pantry = pantry;
-    state.shoppingList = shopping;
-  } catch(e) {
-    showError('Could not connect to your Cloudflare Worker. Make sure it is deployed and the URL is correct.');
-    console.error(e);
-  } finally {
-    showLoadingOverlay(false);
-  }
-}
 
-function showLoadingOverlay(show) {
-  document.getElementById('loading-overlay').style.display = show ? 'flex' : 'none';
+    // meals comes back as {dayIndex: meal} with string keys — normalise to numbers
+    state.meals = {};
+    Object.entries(meals).forEach(([k, v]) => { state.meals[Number(k)] = v; });
+
+    state.pantry = pantry;
+
+    // shopping: meals field comes from D1 as JSON string — parse it
+    state.shoppingList = shopping.map(s => ({
+      ...s,
+      meals: typeof s.meals === 'string' ? JSON.parse(s.meals) : (s.meals || []),
+      checked: !!s.checked,
+    }));
+
+  } catch(e) {
+    console.error(e);
+    showGlobalError('Could not connect to your Cloudflare Worker: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+
+  renderWeek();
+  renderRecipes();
+  renderShopping();
+  renderPantry();
+  updateBadges();
+});
+
+// ════════ UI HELPERS ════════
+function showLoading(on) {
+  document.getElementById('loading-overlay').style.display = on ? 'flex' : 'none';
 }
-function showError(msg) {
+function showGlobalError(msg) {
   const el = document.getElementById('global-error');
   el.textContent = msg;
   el.style.display = msg ? 'block' : 'none';
 }
-
-// ════════ INIT ════════
-loadState().then(() => {
-  renderWeek(); renderRecipes(); renderShopping(); renderPantry(); updateBadges();
-});
-
-// ════════ NAV ════════
 function showView(name) {
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById('view-' + name).classList.add('active');
   const names = ['planner','recipes','shopping','pantry'];
-  document.querySelectorAll('nav button').forEach((b,i) => b.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('nav button').forEach((b,i) => b.classList.toggle('active', names[i] === name));
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-document.querySelectorAll('.modal-overlay').forEach(el => {
-  el.addEventListener('click', function(e) { if(e.target===this) this.classList.remove('open'); });
-});
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function updateBadges() {
+  const shopCount = (state.shoppingList||[]).filter(i => !i.checked).length;
+  const pantryCount = (state.pantry||[]).length;
+  const recCount = (state.recipes||[]).length;
+  const sb = document.getElementById('shop-badge');   sb.textContent = shopCount;   sb.style.display = shopCount   > 0 ? 'inline' : 'none';
+  const pb = document.getElementById('pantry-badge'); pb.textContent = pantryCount; pb.style.display = pantryCount > 0 ? 'inline' : 'none';
+  const rb = document.getElementById('rec-badge');    rb.textContent = recCount;    rb.style.display = recCount    > 0 ? 'inline' : 'none';
+}
+function collectIngredients(prefix) {
+  const ings = [];
+  document.querySelectorAll(`[id^="${prefix}-row-"]`).forEach(row => {
+    const id = row.id.replace(`${prefix}-row-`, '');
+    const n = document.getElementById(`${prefix}-name-${id}`);
+    if (n && n.value.trim()) ings.push({
+      name: n.value.trim(),
+      qty:  (document.getElementById(`${prefix}-qty-${id}`)?.value  || '').trim(),
+      unit: (document.getElementById(`${prefix}-unit-${id}`)?.value || '').trim(),
+    });
+  });
+  return ings;
+}
 
-// ════════ WEEK PLANNER (see AI section above for renderWeek) ════════
+// ════════ WEEK PLANNER ════════
+function renderWeek() {
+  const grid = document.getElementById('week-grid');
+  grid.innerHTML = '';
+  DAYS.forEach((day, i) => {
+    const meal = state.meals[i];
+    const card = document.createElement('div');
+    card.className = 'day-card';
+    card.innerHTML = `
+      <div class="day-label">${day}</div>
+      <div class="day-meal ${meal ? '' : 'empty'}">${meal ? meal.name : 'No meal planned'}</div>
+      ${meal ? `<div style="font-size:0.73rem;color:var(--text-muted)">${(meal.ingredients||[]).length} ingredient${(meal.ingredients||[]).length !== 1 ? 's' : ''}</div>` : ''}
+      <div class="day-actions">
+        ${!meal
+          ? `<button class="btn-sm" onclick="openPickerModal(${i})">+ Add</button>
+             <button class="ai-btn" onclick="aiSuggestDay(${i})" title="AI suggestions" style="font-size:0.65rem;padding:4px 8px">✨</button>`
+          : `<button class="btn-sm" onclick="openPickerModal(${i})">Change</button>
+             <button class="btn-sm" onclick="openMealModal(${i})">Edit</button>
+             <button class="btn-sm danger" onclick="removeMeal(${i})">Remove</button>`
+        }
+      </div>`;
+    grid.appendChild(card);
+  });
+}
 
-// ─ Recipe Picker ─
 function openPickerModal(dayIndex) {
   pickerDay = dayIndex;
   document.getElementById('picker-day-title').textContent = DAYS[dayIndex];
@@ -679,50 +743,57 @@ function openPickerModal(dayIndex) {
 }
 function renderPicker(search) {
   const list = document.getElementById('picker-list');
-  const q = (search||'').toLowerCase();
-  const filtered = state.recipes.filter(r => r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q));
-  if (!filtered.length) { list.innerHTML='<div style="color:var(--text-muted);font-size:0.85rem;padding:12px">No recipes match.</div>'; return; }
+  const q = (search || '').toLowerCase();
+  const filtered = state.recipes.filter(r =>
+    r.name.toLowerCase().includes(q) || (r.category||'').toLowerCase().includes(q));
+  if (!filtered.length) {
+    list.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem;padding:12px">No recipes match.</div>';
+    return;
+  }
   list.innerHTML = filtered.map(r => `
     <div class="recipe-picker-item" onclick="pickRecipe('${r.id}')">
       <div class="r-name">${r.name}</div>
-      <div class="r-meta">${r.category} · Serves ${r.serves} · ${r.ingredients.length} ingredients</div>
+      <div class="r-meta">${r.category} · Serves ${r.serves} · ${(r.ingredients||[]).length} ingredients</div>
     </div>`).join('');
 }
 function pickRecipe(recipeId) {
-  const recipe = state.recipes.find(r => r.id===recipeId);
+  const recipe = state.recipes.find(r => r.id === recipeId);
   if (!recipe) return;
-  const meal = { name:recipe.name, notes:recipe.steps||'', ingredients:recipe.ingredients.map(i=>({...i})), recipeId:recipe.id };
+  const meal = { name: recipe.name, notes: recipe.steps||'', ingredients: (recipe.ingredients||[]).map(i => ({...i})), recipeId: recipe.id };
   state.meals[pickerDay] = meal;
   apiFetch('/api/meals', { method:'POST', body: JSON.stringify({ dayIndex: pickerDay, meal }) });
-  closeModal('picker-modal'); renderWeek();
+  closeModal('picker-modal');
+  renderWeek();
 }
 function openManualFromPicker() { closeModal('picker-modal'); openMealModal(pickerDay); }
 
-// ─ Manual Meal ─
 function openMealModal(dayIndex) {
   editingDay = dayIndex;
   const meal = state.meals[dayIndex];
   document.getElementById('modal-day-title').textContent = DAYS[dayIndex];
-  document.getElementById('meal-name').value = meal ? meal.name : '';
-  document.getElementById('meal-notes').value = meal ? (meal.notes||'') : '';
+  document.getElementById('meal-name').value  = meal ? meal.name : '';
+  document.getElementById('meal-notes').value = meal ? (meal.notes || '') : '';
   const container = document.getElementById('ingredients-container');
-  container.innerHTML = ''; ingredientCount = 0;
-  if (meal && meal.ingredients.length > 0) meal.ingredients.forEach(ing => addIngredientRow(ing));
-  else addIngredientRow();
+  container.innerHTML = '';
+  ingredientCount = 0;
+  if (meal && meal.ingredients && meal.ingredients.length > 0)
+    meal.ingredients.forEach(ing => addIngredientRow(ing));
+  else
+    addIngredientRow();
   document.getElementById('meal-modal').classList.add('open');
   setTimeout(() => document.getElementById('meal-name').focus(), 50);
 }
-function addIngredientRow(ing=null) {
-  const id = ingredientCount++;
-  const container = document.getElementById('ingredients-container');
+function addIngredientRow(ing = null) {
+  const id  = ingredientCount++;
   const row = document.createElement('div');
-  row.className='ingredient-row'; row.id=`ing-row-${id}`;
+  row.className = 'ingredient-row';
+  row.id = `ing-row-${id}`;
   row.innerHTML = `
-    <input type="text" placeholder="Ingredient" value="${ing?esc(ing.name):''}" id="ing-name-${id}">
-    <input type="text" placeholder="Qty" value="${ing?esc(ing.qty):''}" id="ing-qty-${id}">
-    <input type="text" placeholder="Unit" value="${ing?esc(ing.unit):''}" id="ing-unit-${id}">
+    <input type="text" placeholder="Ingredient" value="${ing ? esc(ing.name) : ''}" id="ing-name-${id}">
+    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ing-qty-${id}">
+    <input type="text" placeholder="Unit"       value="${ing ? esc(ing.unit) : ''}" id="ing-unit-${id}">
     <button class="icon-btn" onclick="document.getElementById('ing-row-${id}').remove()">×</button>`;
-  container.appendChild(row);
+  document.getElementById('ingredients-container').appendChild(row);
 }
 function saveMeal() {
   const name = document.getElementById('meal-name').value.trim();
@@ -730,7 +801,8 @@ function saveMeal() {
   const meal = { name, notes: document.getElementById('meal-notes').value.trim(), ingredients: collectIngredients('ing') };
   state.meals[editingDay] = meal;
   apiFetch('/api/meals', { method:'POST', body: JSON.stringify({ dayIndex: editingDay, meal }) });
-  closeModal('meal-modal'); renderWeek();
+  closeModal('meal-modal');
+  renderWeek();
 }
 function removeMeal(dayIndex) {
   delete state.meals[dayIndex];
@@ -747,21 +819,23 @@ function clearWeek() {
 // ════════ RECIPES ════════
 function renderRecipes(search) {
   const grid = document.getElementById('recipes-grid');
-  const q = (search||'').toLowerCase();
+  const q = (search || '').toLowerCase();
   const filtered = state.recipes.filter(r =>
-    r.name.toLowerCase().includes(q) || r.category.toLowerCase().includes(q) || (r.desc||'').toLowerCase().includes(q));
+    r.name.toLowerCase().includes(q) ||
+    (r.category||'').toLowerCase().includes(q) ||
+    (r.desc||'').toLowerCase().includes(q));
   if (!filtered.length) {
-    grid.innerHTML=`<div class="empty-state"><div class="big">📖</div><h3>No recipes found</h3><p>Add your first recipe above.</p></div>`;
+    grid.innerHTML = `<div class="empty-state"><div class="big">📖</div><h3>No recipes found</h3><p>Add your first recipe above.</p></div>`;
     return;
   }
   grid.innerHTML = filtered.map(r => `
     <div class="recipe-card">
       <div class="recipe-card-header">
         <div class="recipe-name">${r.name}</div>
-        <span class="recipe-tag">${r.category}</span>
+        <span class="recipe-tag">${r.category||''}</span>
       </div>
       <div class="recipe-desc">${r.desc||''}</div>
-      <div class="recipe-meta">Serves ${r.serves} · ${r.ingredients.length} ingredients</div>
+      <div class="recipe-meta">Serves ${r.serves} · ${(r.ingredients||[]).length} ingredients</div>
       <div class="recipe-actions">
         <button class="btn-sm" onclick="viewRecipe('${r.id}')">View</button>
         <button class="btn-sm" onclick="openRecipeModal('${r.id}')">Edit</button>
@@ -772,24 +846,24 @@ function renderRecipes(search) {
 }
 
 function viewRecipe(id) {
-  const r = state.recipes.find(x => x.id===id);
+  const r = state.recipes.find(x => x.id === id);
   if (!r) return;
-  const steps = (r.steps||'').split('\n').filter(s=>s.trim());
+  const steps = (r.steps||'').split('\n').filter(s => s.trim());
   document.getElementById('recipe-detail-content').innerHTML = `
     <h2>${r.name}</h2>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <span class="recipe-tag">${r.category}</span>
+      <span class="recipe-tag">${r.category||''}</span>
       <span class="recipe-tag">Serves ${r.serves}</span>
     </div>
-    ${r.desc?`<p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:18px;line-height:1.6">${r.desc}</p>`:''}
+    ${r.desc ? `<p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:18px;line-height:1.6">${r.desc}</p>` : ''}
     <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px">Ingredients</div>
     <div class="ing-chips" style="margin-bottom:22px">
-      ${r.ingredients.map(i=>`<span class="ing-chip">${i.name}${i.qty?' — '+i.qty+' '+(i.unit||''):''}</span>`).join('')}
+      ${(r.ingredients||[]).map(i => `<span class="ing-chip">${i.name}${i.qty ? ' — '+i.qty+' '+(i.unit||'') : ''}</span>`).join('')}
     </div>
-    ${steps.length?`
+    ${steps.length ? `
       <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px">Method</div>
-      <div class="recipe-steps"><ol>${steps.map(s=>`<li>${s.replace(/^\d+\.\s*/,'')}</li>`).join('')}</ol></div>
-    `:''}`;
+      <div class="recipe-steps"><ol>${steps.map(s => `<li>${s.replace(/^\d+\.\s*/,'')}</li>`).join('')}</ol></div>
+    ` : ''}`;
   document.getElementById('recipe-detail-actions').innerHTML = `
     <button class="btn-secondary" onclick="closeModal('recipe-detail-modal')">Close</button>
     <button class="btn-secondary" onclick="closeModal('recipe-detail-modal');openRecipeModal('${r.id}')">Edit</button>`;
@@ -797,48 +871,54 @@ function viewRecipe(id) {
 }
 
 function openRecipeModal(id) {
-  editingRecipeId = id;
-  const r = id ? state.recipes.find(x => x.id===id) : null;
+  editingRecipeId = id || null;
+  const r = id ? state.recipes.find(x => x.id === id) : null;
   document.getElementById('recipe-modal-title').textContent = r ? 'Edit Recipe' : 'New Recipe';
-  document.getElementById('rec-name').value = r ? r.name : '';
-  document.getElementById('rec-cat').value = r ? r.category : 'Pasta';
+  document.getElementById('rec-name').value  = r ? r.name : '';
+  document.getElementById('rec-cat').value   = r ? r.category : 'Pasta';
   document.getElementById('rec-serves').value = r ? r.serves : '4';
-  document.getElementById('rec-desc').value = r ? (r.desc||'') : '';
+  document.getElementById('rec-desc').value  = r ? (r.desc||'') : '';
   document.getElementById('rec-steps').value = r ? (r.steps||'') : '';
   const container = document.getElementById('rec-ingredients-container');
-  container.innerHTML=''; recIngCount=0;
-  if (r && r.ingredients.length>0) r.ingredients.forEach(ing => addRecipeIngRow(ing));
-  else addRecipeIngRow();
+  container.innerHTML = '';
+  recIngCount = 0;
+  if (r && r.ingredients && r.ingredients.length > 0)
+    r.ingredients.forEach(ing => addRecipeIngRow(ing));
+  else
+    addRecipeIngRow();
   document.getElementById('recipe-modal').classList.add('open');
   setTimeout(() => document.getElementById('rec-name').focus(), 50);
 }
-function addRecipeIngRow(ing=null) {
-  const id = recIngCount++;
-  const container = document.getElementById('rec-ingredients-container');
+function addRecipeIngRow(ing = null) {
+  const id  = recIngCount++;
   const row = document.createElement('div');
-  row.className='ingredient-row'; row.id=`ring-row-${id}`;
+  row.className = 'ingredient-row';
+  row.id = `ring-row-${id}`;
   row.innerHTML = `
-    <input type="text" placeholder="Ingredient" value="${ing?esc(ing.name):''}" id="ring-name-${id}">
-    <input type="text" placeholder="Qty" value="${ing?esc(ing.qty):''}" id="ring-qty-${id}">
-    <input type="text" placeholder="Unit" value="${ing?esc(ing.unit):''}" id="ring-unit-${id}">
+    <input type="text" placeholder="Ingredient" value="${ing ? esc(ing.name) : ''}" id="ring-name-${id}">
+    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ring-qty-${id}">
+    <input type="text" placeholder="Unit"       value="${ing ? esc(ing.unit) : ''}" id="ring-unit-${id}">
     <button class="icon-btn" onclick="document.getElementById('ring-row-${id}').remove()">×</button>`;
-  container.appendChild(row);
+  document.getElementById('rec-ingredients-container').appendChild(row);
 }
 function saveRecipe() {
   const name = document.getElementById('rec-name').value.trim();
   if (!name) { alert('Please enter a recipe name.'); return; }
   const recipe = {
-    id: editingRecipeId || 'r_'+Date.now(),
-    name, category:document.getElementById('rec-cat').value,
-    serves:document.getElementById('rec-serves').value.trim(),
-    desc:document.getElementById('rec-desc').value.trim(),
-    steps:document.getElementById('rec-steps').value.trim(),
-    ingredients:collectIngredients('ring'),
+    id:          editingRecipeId || 'r_' + Date.now(),
+    name,
+    category:    document.getElementById('rec-cat').value,
+    serves:      document.getElementById('rec-serves').value.trim(),
+    desc:        document.getElementById('rec-desc').value.trim(),
+    steps:       document.getElementById('rec-steps').value.trim(),
+    ingredients: collectIngredients('ring'),
   };
   if (editingRecipeId) {
-    const idx = state.recipes.findIndex(r=>r.id===editingRecipeId);
-    if (idx>-1) state.recipes[idx]=recipe; else state.recipes.push(recipe);
-  } else { state.recipes.push(recipe); }
+    const idx = state.recipes.findIndex(r => r.id === editingRecipeId);
+    if (idx > -1) state.recipes[idx] = recipe; else state.recipes.push(recipe);
+  } else {
+    state.recipes.push(recipe);
+  }
   apiFetch('/api/recipes', { method:'POST', body: JSON.stringify(recipe) });
   closeModal('recipe-modal');
   const searchEl = document.querySelector('#view-recipes input');
@@ -847,8 +927,8 @@ function saveRecipe() {
 }
 function deleteRecipe(id) {
   if (!confirm('Delete this recipe?')) return;
-  state.recipes = state.recipes.filter(r=>r.id!==id);
-  apiFetch('/api/recipes/'+id, { method:'DELETE' });
+  state.recipes = state.recipes.filter(r => r.id !== id);
+  apiFetch('/api/recipes/' + id, { method:'DELETE' });
   const searchEl = document.querySelector('#view-recipes input');
   renderRecipes(searchEl ? searchEl.value : '');
   updateBadges();
@@ -857,9 +937,9 @@ function deleteRecipe(id) {
 // ════════ SHOPPING ════════
 function generateShoppingList() {
   const all = [];
-  DAYS.forEach((_,i) => {
+  DAYS.forEach((_, i) => {
     const meal = state.meals[i];
-    if (meal) meal.ingredients.forEach(ing => all.push({...ing, meal:meal.name, checked:false}));
+    if (meal) (meal.ingredients||[]).forEach(ing => all.push({ ...ing, meal: meal.name }));
   });
   if (!all.length) { alert('No ingredients found. Add some meals with ingredients first.'); return; }
   const merged = {};
@@ -867,56 +947,105 @@ function generateShoppingList() {
     const key = ing.name.toLowerCase();
     if (merged[key]) {
       merged[key].meals.push(ing.meal);
-      const q1=parseFloat(merged[key].qty), q2=parseFloat(ing.qty);
-      if (!isNaN(q1)&&!isNaN(q2)&&merged[key].unit===ing.unit) merged[key].qty=(q1+q2).toString();
-    } else { merged[key]={...ing, meals:[ing.meal]}; }
+      const q1 = parseFloat(merged[key].qty), q2 = parseFloat(ing.qty);
+      if (!isNaN(q1) && !isNaN(q2) && merged[key].unit === ing.unit)
+        merged[key].qty = (q1 + q2).toString();
+    } else {
+      merged[key] = { ...ing, meals: [ing.meal] };
+    }
   });
-  state.shoppingList = Object.values(merged).map(ing => ({name:ing.name,qty:ing.qty,unit:ing.unit,meals:ing.meals,checked:false}));
+  state.shoppingList = Object.values(merged).map(ing => ({
+    name: ing.name, qty: ing.qty, unit: ing.unit, meals: ing.meals, checked: false,
+  }));
   apiFetch('/api/shopping', { method:'POST', body: JSON.stringify(state.shoppingList) });
-  renderShopping(); updateBadges(); showView('shopping');
+  renderShopping();
+  updateBadges();
+  showView('shopping');
 }
-// ════════ SHOPPING (renderShopping is in AI section) ════════
+
+function renderShopping() {
+  const container = document.getElementById('shopping-list-container');
+  if (!state.shoppingList || !state.shoppingList.length) {
+    container.innerHTML = `<div class="empty-state"><div class="big">🛒</div><h3>No shopping list yet</h3><p>Plan your dinners then hit "Generate Shopping List".</p></div>`;
+    return;
+  }
+  const pantryMap = {};
+  (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+
+  let html = '<div class="ingredient-list">';
+  state.shoppingList.forEach((item, i) => {
+    const inPantry = pantryMap[item.name.toLowerCase()];
+    const meals = Array.isArray(item.meals) ? item.meals : [];
+    html += `<div class="ingredient-item ${item.checked ? 'checked' : ''} ${inPantry ? 'in-pantry' : ''}" id="shop-item-${i}">
+      <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleShopItem(${i}, this.checked)">
+      <span class="ing-name">${item.name}</span>
+      <span class="ing-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'')}</span>
+      ${inPantry ? `<span class="pantry-flag">✓ In pantry</span>` : ''}
+      <span class="ing-meal">${meals.join(', ')}</span>
+    </div>`;
+  });
+  html += '</div>';
+
+  const inPantryCount = state.shoppingList.filter(i => pantryMap[i.name.toLowerCase()]).length;
+  if (inPantryCount > 0) {
+    html = `<div style="background:#6a9e6f15;border:1px solid #6a9e6f44;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:0.83rem;color:var(--success)">
+      ✓ ${inPantryCount} item${inPantryCount !== 1 ? 's' : ''} already in your pantry!
+    </div>` + html;
+  }
+  container.innerHTML = html;
+}
+
 function toggleShopItem(idx, checked) {
   const item = state.shoppingList[idx];
   if (!item) return;
   item.checked = checked;
-  apiFetch(`/api/shopping/${item.id}/check`, { method:'POST', body: JSON.stringify({ checked }) });
+  if (item.id) {
+    apiFetch(`/api/shopping/${item.id}/check`, { method:'POST', body: JSON.stringify({ checked }) });
+  }
   updateBadges();
   const el = document.getElementById(`shop-item-${idx}`);
-  if (el) { el.classList.toggle('checked', checked); }
+  if (el) el.classList.toggle('checked', checked);
 }
 function markAllDone() {
   state.shoppingList.forEach(i => i.checked = true);
   apiFetch('/api/shopping', { method:'POST', body: JSON.stringify(state.shoppingList) });
-  renderShopping(); updateBadges();
+  renderShopping();
+  updateBadges();
 }
 async function shoppingBought() {
-  if (!state.shoppingList||!state.shoppingList.length) return;
-  const toBuy = state.shoppingList.filter(i=>i.checked);
-  if (!toBuy.length) { alert('Tick some items first.'); return; }
+  if (!state.shoppingList || !state.shoppingList.length) return;
+  if (!state.shoppingList.some(i => i.checked)) { alert('Tick some items first.'); return; }
   await apiFetch('/api/shopping/bought', { method:'POST' });
-  // Reload fresh state from DB
-  state.shoppingList = await apiFetch('/api/shopping');
-  state.pantry = await apiFetch('/api/pantry');
-  renderShopping(); renderPantry(); updateBadges(); showView('pantry');
-  const msg=document.getElementById('success-msg');
-  msg.style.display='block'; setTimeout(()=>msg.style.display='none',4000);
+  const [shopping, pantry] = await Promise.all([apiFetch('/api/shopping'), apiFetch('/api/pantry')]);
+  state.shoppingList = shopping.map(s => ({
+    ...s,
+    meals: typeof s.meals === 'string' ? JSON.parse(s.meals) : (s.meals||[]),
+    checked: !!s.checked,
+  }));
+  state.pantry = pantry;
+  renderShopping();
+  renderPantry();
+  updateBadges();
+  showView('pantry');
+  const msg = document.getElementById('success-msg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 4000);
 }
 
 // ════════ PANTRY ════════
 function renderPantry() {
-  const container=document.getElementById('pantry-container');
-  if (!state.pantry||!state.pantry.length) {
-    container.innerHTML=`<div class="empty-state"><div class="big">🥫</div><h3>Pantry is empty</h3><p>Complete your shopping or add items manually.</p></div>`;
+  const container = document.getElementById('pantry-container');
+  if (!state.pantry || !state.pantry.length) {
+    container.innerHTML = `<div class="empty-state"><div class="big">🥫</div><h3>Pantry is empty</h3><p>Complete your shopping or add items manually.</p></div>`;
     return;
   }
-  let html='<div class="pantry-grid">';
-  state.pantry.forEach((item,i) => {
-    html+=`<div class="pantry-item">
+  let html = '<div class="pantry-grid">';
+  state.pantry.forEach((item, i) => {
+    html += `<div class="pantry-item">
       <div class="pantry-item-info">
         <div class="p-name">${item.name}</div>
-        <div class="p-qty">${item.qty?item.qty+' '+(item.unit||''):(item.unit||'—')}</div>
-        <div class="p-added">Added ${item.added_date||item.addedDate||''}</div>
+        <div class="p-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'—')}</div>
+        <div class="p-added">Added ${item.added_date || item.addedDate || ''}</div>
       </div>
       <div class="pantry-item-actions">
         <button class="edit-btn" onclick="openEditPantryModal(${i})">Edit</button>
@@ -924,68 +1053,69 @@ function renderPantry() {
       </div>
     </div>`;
   });
-  html+='</div>';
-  container.innerHTML=html;
+  html += '</div>';
+  container.innerHTML = html;
 }
 function openAddPantryModal() {
-  editingPantryIdx=null;
-  document.getElementById('pantry-modal-title').textContent='Add Pantry Item';
-  document.getElementById('pantry-item-name').value='';
-  document.getElementById('pantry-item-qty').value='';
-  document.getElementById('pantry-item-unit').value='';
+  editingPantryIdx = null;
+  document.getElementById('pantry-modal-title').textContent = 'Add Pantry Item';
+  document.getElementById('pantry-item-name').value = '';
+  document.getElementById('pantry-item-qty').value  = '';
+  document.getElementById('pantry-item-unit').value = '';
   document.getElementById('pantry-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('pantry-item-name').focus(),50);
+  setTimeout(() => document.getElementById('pantry-item-name').focus(), 50);
 }
 function openEditPantryModal(idx) {
-  editingPantryIdx=idx;
-  const item=state.pantry[idx];
-  document.getElementById('pantry-modal-title').textContent='Edit Pantry Item';
-  document.getElementById('pantry-item-name').value=item.name;
-  document.getElementById('pantry-item-qty').value=item.qty||'';
-  document.getElementById('pantry-item-unit').value=item.unit||'';
+  editingPantryIdx = idx;
+  const item = state.pantry[idx];
+  document.getElementById('pantry-modal-title').textContent = 'Edit Pantry Item';
+  document.getElementById('pantry-item-name').value = item.name;
+  document.getElementById('pantry-item-qty').value  = item.qty  || '';
+  document.getElementById('pantry-item-unit').value = item.unit || '';
   document.getElementById('pantry-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('pantry-item-qty').focus(),50);
+  setTimeout(() => document.getElementById('pantry-item-qty').focus(), 50);
 }
 async function savePantryItem() {
-  const name=document.getElementById('pantry-item-name').value.trim();
+  const name = document.getElementById('pantry-item-name').value.trim();
   if (!name) { alert('Please enter an item name.'); return; }
-  const qty=document.getElementById('pantry-item-qty').value.trim();
-  const unit=document.getElementById('pantry-item-unit').value.trim();
-  const date=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short'});
-  if (editingPantryIdx!==null) {
+  const qty  = document.getElementById('pantry-item-qty').value.trim();
+  const unit = document.getElementById('pantry-item-unit').value.trim();
+  const date = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+  if (editingPantryIdx !== null) {
     const item = state.pantry[editingPantryIdx];
-    state.pantry[editingPantryIdx]={...item,name,qty,unit};
-    await apiFetch(`/api/pantry/${item.id}`, { method:'PUT', body: JSON.stringify({name,qty,unit}) });
+    state.pantry[editingPantryIdx] = { ...item, name, qty, unit };
+    await apiFetch(`/api/pantry/${item.id}`, { method:'PUT', body: JSON.stringify({ name, qty, unit }) });
   } else {
-    await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({name,qty,unit,addedDate:date}) });
+    await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({ name, qty, unit, addedDate: date }) });
     state.pantry = await apiFetch('/api/pantry');
   }
-  closeModal('pantry-modal'); renderPantry(); updateBadges();
+  closeModal('pantry-modal');
+  renderPantry();
+  updateBadges();
 }
 async function removePantryItem(i) {
   const item = state.pantry[i];
-  state.pantry.splice(i,1);
+  state.pantry.splice(i, 1);
   await apiFetch(`/api/pantry/${item.id}`, { method:'DELETE' });
-  renderPantry(); updateBadges();
+  renderPantry();
+  updateBadges();
 }
 function clearPantry() {
   if (!confirm('Clear the entire pantry?')) return;
-  state.pantry=[];
+  state.pantry = [];
   apiFetch('/api/pantry/clear', { method:'POST' });
-  renderPantry(); updateBadges();
+  renderPantry();
+  updateBadges();
 }
 
-// ════════ AI FEATURES (proxied via Worker — no credentials in browser) ════════
-
-function updateKeyStatus() {} // no-op, kept for safety
-function openKeyModal() {}
+// ════════ AI (proxied through Worker — no credentials in browser) ════════
 function requireKey() { return true; }
 
 async function callClaude(systemPrompt, userMsg) {
   const resp = await fetch(API + '/api/ai', {
-    method: 'POST',
+    method:  'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ system: systemPrompt, user: userMsg }),
+    body:    JSON.stringify({ system: systemPrompt, user: userMsg }),
   });
   if (!resp.ok) {
     const e = await resp.json().catch(() => ({}));
@@ -1000,18 +1130,18 @@ function safeParseJSON(text) {
   return JSON.parse(clean);
 }
 
-// Suggest meals for a single day
 async function aiSuggestDay(dayIndex) {
-  if (!requireKey()) return;
   const modal = document.getElementById('ai-modal');
   document.getElementById('ai-modal-title').textContent = `✨ Suggestions for ${DAYS[dayIndex]}`;
-  document.getElementById('ai-modal-sub').textContent = 'Tailored to your catalog and what you have this week';
+  document.getElementById('ai-modal-sub').textContent   = 'Tailored to your catalog and what you have this week';
   document.getElementById('ai-suggestions-container').innerHTML =
-    `<div style="text-align:center;padding:30px;color:var(--text-muted)"><div class="spinner dark" style="width:22px;height:22px;margin:0 auto 10px"></div><div style="font-size:0.85rem">Thinking…</div></div>`;
+    `<div style="text-align:center;padding:30px;color:var(--text-muted)">
+       <div class="spinner dark" style="width:22px;height:22px;margin:0 auto 10px"></div>
+       <div style="font-size:0.85rem">Thinking…</div>
+     </div>`;
   modal.classList.add('open');
-  modal._dayIndex = dayIndex;
 
-  const planned = DAYS.map((d,i) => state.meals[i] ? `${d}: ${state.meals[i].name}` : null).filter(Boolean);
+  const planned     = DAYS.map((d, i) => state.meals[i] ? `${d}: ${state.meals[i].name}` : null).filter(Boolean);
   const pantryNames = state.pantry.map(p => p.name);
   const recipeNames = state.recipes.map(r => r.name);
 
@@ -1021,70 +1151,63 @@ async function aiSuggestDay(dayIndex) {
       `I need 4 dinner suggestions for ${DAYS[dayIndex]}.
 Already planned this week: ${planned.join(', ') || 'nothing yet'}.
 My recipe catalog: ${recipeNames.slice(0,20).join(', ')}.
-Pantry items I have: ${pantryNames.slice(0,20).join(', ') || 'unknown'}.
-
-Return JSON array of exactly 4 objects: [{"name":"...","why":"...","fromCatalog":true/false}]
-"why" should be a short reason (max 15 words) why this suits today. "fromCatalog" true if it matches a recipe from my catalog.`
+Pantry items: ${pantryNames.slice(0,20).join(', ') || 'unknown'}.
+Return JSON array of exactly 4 objects: [{"name":"...","why":"...","fromCatalog":true}]
+"why" is max 15 words. "fromCatalog" true only if the name exactly matches a recipe in my catalog.`
     );
     const suggestions = safeParseJSON(raw);
-    const html = suggestions.map(s => `
-      <div class="ai-suggestion-item" onclick="pickAiSuggestion(${dayIndex},'${s.name.replace(/'/g,"\\'")}')">
-        <div class="sug-name">${s.name} ${s.fromCatalog ? '<span class="ai-badge">📖 In catalog</span>' : ''}</div>
-        <div class="sug-why">${s.why}</div>
-      </div>`).join('');
     document.getElementById('ai-suggestions-container').innerHTML =
-      `<div class="ai-suggestions">${html}</div>`;
+      `<div class="ai-suggestions">` +
+      suggestions.map(s => `
+        <div class="ai-suggestion-item" onclick="pickAiSuggestion(${dayIndex},'${s.name.replace(/'/g,"\\'")}')">
+          <div class="sug-name">${s.name} ${s.fromCatalog ? '<span class="ai-badge">📖 In catalog</span>' : ''}</div>
+          <div class="sug-why">${s.why}</div>
+        </div>`).join('') +
+      `</div>`;
   } catch(e) {
     document.getElementById('ai-suggestions-container').innerHTML =
-      `<div style="color:var(--danger);font-size:0.85rem;padding:16px">${e.message || 'Could not get suggestions.'}<br><br><button class="btn-sm" onclick="closeModal('ai-modal');openKeyModal()">☁️ Check CF credentials</button></div>`;
+      `<div style="color:var(--danger);font-size:0.85rem;padding:16px">${e.message}</div>`;
   }
 }
 
 function pickAiSuggestion(dayIndex, name) {
   const recipe = state.recipes.find(r => r.name.toLowerCase() === name.toLowerCase());
   const meal = recipe
-    ? { name: recipe.name, notes: recipe.steps||'', ingredients: recipe.ingredients.map(i=>({...i})), recipeId: recipe.id }
+    ? { name: recipe.name, notes: recipe.steps||'', ingredients: (recipe.ingredients||[]).map(i => ({...i})), recipeId: recipe.id }
     : { name, notes: '', ingredients: [] };
   state.meals[dayIndex] = meal;
   apiFetch('/api/meals', { method:'POST', body: JSON.stringify({ dayIndex, meal }) });
-  closeModal('ai-modal'); renderWeek();
+  closeModal('ai-modal');
+  renderWeek();
 }
 
-// Plan the entire week with AI
 function aiPlanWeek() {
-  if (!requireKey()) return;
   document.getElementById('ai-week-prefs').value = '';
   document.getElementById('ai-week-modal').classList.add('open');
 }
 async function runAiWeekPlan() {
-  const btn = document.getElementById('ai-week-go-btn');
+  const btn   = document.getElementById('ai-week-go-btn');
   const prefs = document.getElementById('ai-week-prefs').value.trim();
-  btn.disabled = true;
+  btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span> Planning…';
-
-  const recipeNames = state.recipes.map(r => r.name);
-  const pantryNames = state.pantry.map(p => p.name);
-
   try {
     const raw = await callClaude(
       'You are a dinner planning assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
-      `Plan 7 dinners for Monday through Sunday.
-My recipe catalog: ${recipeNames.join(', ') || 'none'}.
-Pantry: ${pantryNames.join(', ') || 'unknown'}.
+      `Plan 7 dinners Monday–Sunday.
+My recipe catalog: ${state.recipes.map(r => r.name).join(', ') || 'none'}.
+Pantry: ${state.pantry.map(p => p.name).join(', ') || 'unknown'}.
 Preferences: ${prefs || 'none'}.
-
-Return JSON array of 7 objects (one per day, Monday first):
-[{"day":"Monday","name":"...","fromCatalog":true/false}]
-Prioritise using recipes from the catalog. Vary the types of food. Keep variety across the week.`
+Return JSON array of 7 objects (Monday first):
+[{"day":"Monday","name":"...","fromCatalog":true}]
+Prioritise recipes from the catalog. Vary types of food.`
     );
     const plan = safeParseJSON(raw);
     closeModal('ai-week-modal');
     const saves = [];
-    plan.forEach((item, i) => {
-      if (i > 6) return;
+    plan.slice(0, 7).forEach((item, i) => {
       const recipe = state.recipes.find(r => r.name.toLowerCase() === item.name.toLowerCase());
       const meal = recipe
-        ? { name: recipe.name, notes: recipe.steps||'', ingredients: recipe.ingredients.map(x=>({...x})), recipeId: recipe.id }
+        ? { name: recipe.name, notes: recipe.steps||'', ingredients: (recipe.ingredients||[]).map(x => ({...x})), recipeId: recipe.id }
         : { name: item.name, notes: '', ingredients: [] };
       state.meals[i] = meal;
       saves.push(apiFetch('/api/meals', { method:'POST', body: JSON.stringify({ dayIndex: i, meal }) }));
@@ -1092,140 +1215,49 @@ Prioritise using recipes from the catalog. Vary the types of food. Keep variety 
     await Promise.all(saves);
     renderWeek();
   } catch(e) {
-    alert(e.message || 'Could not generate plan. Check your Cloudflare credentials.');
+    alert('Could not generate plan: ' + e.message);
   } finally {
-    btn.disabled = false;
+    btn.disabled  = false;
     btn.innerHTML = '✨ Generate Plan';
   }
 }
 
-// AI fill recipe details
 async function aiGenerateRecipe() {
-  if (!requireKey()) return;
   const name = document.getElementById('rec-name').value.trim();
   if (!name) { alert('Enter a recipe name first.'); return; }
   const btn = document.getElementById('ai-gen-btn');
-  btn.disabled = true;
+  btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span>';
-
   try {
     const raw = await callClaude(
       'You are a recipe assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
       `Generate a complete recipe for: "${name}"
-Return JSON with these exact keys:
-{
-  "category": "(Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other)",
-  "serves": "4",
-  "desc": "One sentence description",
-  "ingredients": [{"name":"...","qty":"...","unit":"..."}],
-  "steps": "1. Step one\\n2. Step two\\n..."
-}
-Include 6-12 ingredients with quantities. 4-8 steps.`
+Return JSON with exactly these keys:
+{"category":"Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","ingredients":[{"name":"","qty":"","unit":""}],"steps":"1. ...\n2. ..."}`
     );
     const r = safeParseJSON(raw);
-
-    // Fill category
-    const catEl = document.getElementById('rec-cat');
     if (r.category) {
-      for (let o of catEl.options) { if (o.value === r.category) { catEl.value = r.category; break; } }
+      const catEl = document.getElementById('rec-cat');
+      for (const o of catEl.options) { if (o.value === r.category) { catEl.value = r.category; break; } }
     }
-    if (r.serves) document.getElementById('rec-serves').value = r.serves;
-    if (r.desc) document.getElementById('rec-desc').value = r.desc;
-    if (r.steps) document.getElementById('rec-steps').value = r.steps;
-
-    // Fill ingredients
-    const container = document.getElementById('rec-ingredients-container');
-    container.innerHTML = ''; recIngCount = 0;
-    (r.ingredients || []).forEach(ing => addRecipeIngRow(ing));
+    if (r.serves)  document.getElementById('rec-serves').value = r.serves;
+    if (r.desc)    document.getElementById('rec-desc').value   = r.desc;
+    if (r.steps)   document.getElementById('rec-steps').value  = r.steps;
+    if (r.ingredients) {
+      document.getElementById('rec-ingredients-container').innerHTML = '';
+      recIngCount = 0;
+      r.ingredients.forEach(ing => addRecipeIngRow(ing));
+    }
   } catch(e) {
-    alert(e.message || 'Could not generate recipe. Check your Cloudflare credentials.');
+    alert('Could not generate recipe: ' + e.message);
   } finally {
-    btn.disabled = false;
+    btn.disabled  = false;
     btn.innerHTML = '✨ AI Fill';
   }
 }
-
-// Pantry-aware shopping list
-function renderShopping() {
-  const container = document.getElementById('shopping-list-container');
-  if (!state.shoppingList||!state.shoppingList.length) {
-    container.innerHTML=`<div class="empty-state"><div class="big">🛒</div><h3>No shopping list yet</h3><p>Plan your dinners then hit "Generate Shopping List".</p></div>`;
-    return;
-  }
-  const pantryMap = {};
-  (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
-
-  let html='<div class="ingredient-list">';
-  state.shoppingList.forEach((item,i) => {
-    const inPantry = pantryMap[item.name.toLowerCase()];
-    html+=`<div class="ingredient-item ${item.checked?'checked':''} ${inPantry?'in-pantry':''}" id="shop-item-${i}">
-      <input type="checkbox" ${item.checked?'checked':''} onchange="toggleShopItem(${i},this.checked)">
-      <span class="ing-name">${item.name}</span>
-      <span class="ing-qty">${item.qty?item.qty+' '+(item.unit||''):(item.unit||'')}</span>
-      ${inPantry ? `<span class="pantry-flag">✓ In pantry</span>` : ''}
-      <span class="ing-meal">${item.meals?item.meals.join(', '):''}</span>
-    </div>`;
-  });
-  html+='</div>';
-  const inPantryCount = state.shoppingList.filter(i => pantryMap[i.name.toLowerCase()]).length;
-  if (inPantryCount > 0) {
-    html = `<div style="background:#6a9e6f15;border:1px solid #6a9e6f44;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:0.83rem;color:var(--success)">
-      ✓ ${inPantryCount} item${inPantryCount!==1?'s':''} already in your pantry — you may already have ${inPantryCount===1?'it':'them'}!
-    </div>` + html;
-  }
-  container.innerHTML=html;
-}
-
-// Show AI suggest button on each day card
-function renderWeek() {
-  const grid = document.getElementById('week-grid');
-  grid.innerHTML = '';
-  DAYS.forEach((day,i) => {
-    const meal = state.meals[i];
-    const card = document.createElement('div');
-    card.className = 'day-card';
-    card.innerHTML = `
-      <div class="day-label">${day}</div>
-      <div class="day-meal ${meal?'':'empty'}">${meal ? meal.name : 'No meal planned'}</div>
-      ${meal ? `<div style="font-size:0.73rem;color:var(--text-muted)">${meal.ingredients.length} ingredient${meal.ingredients.length!==1?'s':''}</div>` : ''}
-      <div class="day-actions">
-        ${!meal
-          ? `<button class="btn-sm" onclick="openPickerModal(${i})">+ Add</button>
-             <button class="ai-btn" onclick="aiSuggestDay(${i})" title="Get AI suggestions" style="font-size:0.65rem;padding:4px 8px">✨</button>`
-          : `<button class="btn-sm" onclick="openPickerModal(${i})">Change</button>
-             <button class="btn-sm" onclick="openMealModal(${i})">Edit</button>
-             <button class="btn-sm danger" onclick="removeMeal(${i})">Remove</button>`
-        }
-      </div>`;
-    grid.appendChild(card);
-  });
-}
-
-// ════════ HELPERS ════════
-function collectIngredients(prefix) {
-  const ings=[];
-  document.querySelectorAll(`[id^="${prefix}-row-"]`).forEach(row => {
-    const id=row.id.replace(`${prefix}-row-`,'');
-    const n=document.getElementById(`${prefix}-name-${id}`);
-    if (n&&n.value.trim()) ings.push({
-      name:n.value.trim(),
-      qty:(document.getElementById(`${prefix}-qty-${id}`)?.value||'').trim(),
-      unit:(document.getElementById(`${prefix}-unit-${id}`)?.value||'').trim(),
-    });
-  });
-  return ings;
-}
-function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function updateBadges() {
-  const shopCount=(state.shoppingList||[]).filter(i=>!i.checked).length;
-  const pantryCount=(state.pantry||[]).length;
-  const recCount=(state.recipes||[]).length;
-  const sb=document.getElementById('shop-badge'); sb.textContent=shopCount; sb.style.display=shopCount>0?'inline':'none';
-  const pb=document.getElementById('pantry-badge'); pb.textContent=pantryCount; pb.style.display=pantryCount>0?'inline':'none';
-  const rb=document.getElementById('rec-badge'); rb.textContent=recCount; rb.style.display=recCount>0?'inline':'none';
-}
 </script>
-<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,14,12,0.85);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:14px">
+
+<div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,14,12,0.88);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:14px">
   <div class="spinner dark" style="width:32px;height:32px"></div>
   <div style="color:var(--text-muted);font-size:0.9rem">Loading your data…</div>
 </div>
