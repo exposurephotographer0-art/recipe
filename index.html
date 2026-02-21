@@ -121,6 +121,32 @@
   .add-ingredient-btn:hover { border-color:var(--accent); color:var(--accent); }
   .modal-actions { display:flex; gap:10px; margin-top:22px; justify-content:flex-end; flex-wrap:wrap; }
 
+  /* SHOPPING AISLES */
+  .shop-aisle { margin-bottom: 22px; }
+  .shop-aisle-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 10px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    position: sticky; top: 61px; background: var(--bg);
+    z-index: 10; padding-top: 6px;
+  }
+  .shop-aisle-icon { font-size: 1.1rem; }
+  .shop-aisle-title {
+    font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--text-muted); font-weight: 500; flex: 1;
+  }
+  .shop-aisle-count {
+    font-size: 0.7rem; color: var(--text-muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 2px 7px; border-radius: 10px;
+  }
+  .ingredient-item .del-btn {
+    background: none; border: none; color: var(--border);
+    cursor: pointer; font-size: 1rem; padding: 0 4px; line-height: 1;
+    transition: color 0.15s; flex-shrink: 0;
+  }
+  .ingredient-item .del-btn:hover { color: var(--danger); }
+
   /* SHOPPING */
   .shopping-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:24px; gap:16px; flex-wrap:wrap; }
   .ingredient-list { display:flex; flex-direction:column; gap:7px; }
@@ -134,6 +160,30 @@
   .ing-name { flex:1; font-size:0.93rem; }
   .ing-qty { color:var(--text-muted); font-size:0.83rem; white-space:nowrap; }
   .ing-meal { font-size:0.72rem; color:var(--border); font-style:italic; }
+
+  /* PANTRY CATEGORIES */
+  .pantry-section { margin-bottom: 28px; }
+  .pantry-section-header {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .pantry-section-icon { font-size: 1.2rem; }
+  .pantry-section-title {
+    font-family: 'Playfair Display', serif; font-size: 1rem;
+    color: var(--text-soft); flex: 1;
+  }
+  .pantry-section-count {
+    font-size: 0.72rem; color: var(--text-muted);
+    background: var(--surface2); border: 1px solid var(--border);
+    padding: 2px 8px; border-radius: 10px;
+  }
+  .pantry-cat-badge {
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-muted); background: var(--surface2);
+    border: 1px solid var(--border); padding: 2px 7px; border-radius: 10px;
+    white-space: nowrap;
+  }
 
   /* PANTRY */
   .pantry-toolbar { display:flex; gap:10px; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; justify-content:space-between; }
@@ -338,6 +388,7 @@
         <p class="page-sub">Items in stock — edit quantities or add manually.</p>
       </div>
       <div style="display:flex;gap:9px;flex-wrap:wrap;">
+        <button class="ai-btn-secondary" onclick="aiCategorisePantry()" id="ai-cat-btn">✨ Auto-categorise</button>
         <button class="btn-secondary" onclick="openAddPantryModal()">+ Add Item</button>
         <button class="btn-secondary" onclick="clearPantry()">Clear All</button>
       </div>
@@ -446,6 +497,22 @@
     <div class="form-group">
       <label>Item Name</label>
       <input type="text" id="pantry-item-name" placeholder="e.g. Olive Oil">
+    </div>
+    <div class="form-group">
+      <label>Category <span id="ai-cat-suggest-status" style="color:var(--text-muted);font-size:0.75rem;margin-left:6px"></span></label>
+      <select id="pantry-item-category">
+        <option value="Meat & Fish">🥩 Meat &amp; Fish</option>
+        <option value="Dairy & Eggs">🥛 Dairy &amp; Eggs</option>
+        <option value="Fruit & Veg">🥦 Fruit &amp; Veg</option>
+        <option value="Bakery">🍞 Bakery</option>
+        <option value="Frozen">🧊 Frozen</option>
+        <option value="Condiments & Spices">🧂 Condiments &amp; Spices</option>
+        <option value="Drinks">🥤 Drinks</option>
+        <option value="Grains">🌾 Grains</option>
+        <option value="Tinned Goods">🥫 Tinned Goods</option>
+        <option value="Snacks">🍿 Snacks</option>
+        <option value="Other" selected>📦 Other</option>
+      </select>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group">
@@ -963,36 +1030,93 @@ function generateShoppingList() {
   showView('shopping');
 }
 
+// UK supermarket aisle order
+const SHOP_AISLES = [
+  { key: 'fresh-produce',   label: 'Fresh Produce',         icon: '🥦',  match: ['fruit','veg','vegetable','salad','herb','lettuce','spinach','kale','broccoli','onion','garlic','ginger','carrot','potato','tomato','cucumber','pepper','courgette','mushroom','leek','celery','avocado','lemon','lime','apple','banana','orange','berry','grape','pear','mango','melon','pak choi','spring onion','fresh'] },
+  { key: 'meat-fish',       label: 'Meat & Fish',           icon: '🥩',  match: ['chicken','beef','pork','lamb','mince','steak','bacon','sausage','fish','salmon','prawn','tuna','cod','haddock','anchovy','turkey','duck','venison','ham','pancetta','chorizo','fillet','breast','thigh','wing','loin','rib','king prawn'] },
+  { key: 'dairy-eggs',      label: 'Dairy & Eggs',          icon: '🥛',  match: ['milk','cream','butter','cheese','parmesan','cheddar','mozzarella','yoghurt','yogurt','egg','crème fraîche','sour cream','double cream','single cream','clotted cream','mascarpone','ricotta','feta','brie','gouda','halloumi'] },
+  { key: 'bakery',          label: 'Bakery & Bread',        icon: '🍞',  match: ['bread','loaf','roll','bun','tortilla','wrap','pita','naan','bagel','croissant','sourdough','baguette','flour','pastry','crumpet','muffin','brioche'] },
+  { key: 'frozen',          label: 'Frozen',                icon: '🧊',  match: ['frozen','ice cream','peas frozen','sweetcorn frozen','chips frozen'] },
+  { key: 'tinned',          label: 'Tinned & Jarred Goods', icon: '🥫',  match: ['tinned','canned','can of','chopped tomatoes','tomato purée','puree','passata','coconut milk','chickpea','lentil','kidney bean','baked bean','stock','broth','sardine','mackerel','tuna tin','sweetcorn','olives'] },
+  { key: 'dry-goods',       label: 'Dry Goods & Grains',    icon: '🌾',  match: ['pasta','spaghetti','rice','noodle','couscous','quinoa','oat','lentil','barley','bulgur','arborio','basmati','jasmine','orzo','lasagne','macaroni','penne','fusilli','tagliatelle','risotto','polenta','cornmeal','semolina'] },
+  { key: 'condiments',      label: 'Condiments & Sauces',   icon: '🧂',  match: ['sauce','soy sauce','fish sauce','oyster sauce','worcestershire','ketchup','mustard','mayo','mayonnaise','vinegar','oil','olive oil','sesame oil','vegetable oil','salt','pepper','sugar','honey','syrup','jam','paste','curry paste','tahini','miso','hoisin','sriracha','chilli sauce','hot sauce'] },
+  { key: 'spices',          label: 'Spices & Herbs',        icon: '🌿',  match: ['spice','cumin','coriander','turmeric','paprika','chilli','cayenne','cinnamon','ginger powder','garlic powder','oregano','thyme','rosemary','bay leaf','basil','parsley','mint','dill','sage','cardamom','clove','nutmeg','allspice','fennel seed','mustard seed','curry powder','garam masala','tikka','seasoning','mixed herbs','dried'] },
+  { key: 'drinks',          label: 'Drinks',                icon: '🥤',  match: ['wine','beer','juice','water','stock cube','broth','tea','coffee','milk alternative','oat milk','almond milk','soy milk','cordial','squash'] },
+  { key: 'snacks-other',    label: 'Snacks & Other',        icon: '🛒',  match: [] },
+];
+
+function getAisle(itemName) {
+  const name = itemName.toLowerCase();
+  for (const aisle of SHOP_AISLES.slice(0, -1)) {
+    if (aisle.match.some(keyword => name.includes(keyword))) return aisle.key;
+  }
+  return 'snacks-other';
+}
+
 function renderShopping() {
   const container = document.getElementById('shopping-list-container');
   if (!state.shoppingList || !state.shoppingList.length) {
     container.innerHTML = `<div class="empty-state"><div class="big">🛒</div><h3>No shopping list yet</h3><p>Plan your dinners then hit "Generate Shopping List".</p></div>`;
     return;
   }
+
   const pantryMap = {};
   (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
 
-  let html = '<div class="ingredient-list">';
-  state.shoppingList.forEach((item, i) => {
-    const inPantry = pantryMap[item.name.toLowerCase()];
-    const meals = Array.isArray(item.meals) ? item.meals : [];
-    html += `<div class="ingredient-item ${item.checked ? 'checked' : ''} ${inPantry ? 'in-pantry' : ''}" id="shop-item-${i}">
-      <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleShopItem(${i}, this.checked)">
-      <span class="ing-name">${item.name}</span>
-      <span class="ing-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'')}</span>
-      ${inPantry ? `<span class="pantry-flag">✓ In pantry</span>` : ''}
-      <span class="ing-meal">${meals.join(', ')}</span>
-    </div>`;
+  // Group items by aisle, preserving order
+  const groups = {};
+  SHOP_AISLES.forEach(a => { groups[a.key] = []; });
+  state.shoppingList.forEach((item, globalIdx) => {
+    const aisleKey = getAisle(item.name);
+    groups[aisleKey].push({ item, globalIdx });
   });
-  html += '</div>';
 
-  const inPantryCount = state.shoppingList.filter(i => pantryMap[i.name.toLowerCase()]).length;
-  if (inPantryCount > 0) {
-    html = `<div style="background:#6a9e6f15;border:1px solid #6a9e6f44;border-radius:10px;padding:11px 15px;margin-bottom:14px;font-size:0.83rem;color:var(--success)">
-      ✓ ${inPantryCount} item${inPantryCount !== 1 ? 's' : ''} already in your pantry!
-    </div>` + html;
+  const pantryCount = state.shoppingList.filter(i => pantryMap[i.name.toLowerCase()]).length;
+  let html = '';
+
+  if (pantryCount > 0) {
+    html += `<div style="background:#6a9e6f15;border:1px solid #6a9e6f44;border-radius:10px;padding:11px 15px;margin-bottom:18px;font-size:0.83rem;color:var(--success)">
+      ✓ ${pantryCount} item${pantryCount !== 1 ? 's' : ''} already in your pantry!
+    </div>`;
   }
+
+  SHOP_AISLES.forEach(aisle => {
+    const entries = groups[aisle.key];
+    if (!entries.length) return;
+    html += `<div class="shop-aisle">
+      <div class="shop-aisle-header">
+        <span class="shop-aisle-icon">${aisle.icon}</span>
+        <span class="shop-aisle-title">${aisle.label}</span>
+        <span class="shop-aisle-count">${entries.length}</span>
+      </div>
+      <div class="ingredient-list">`;
+    entries.forEach(({ item, globalIdx }) => {
+      const inPantry = pantryMap[item.name.toLowerCase()];
+      const meals = Array.isArray(item.meals) ? item.meals : [];
+      html += `<div class="ingredient-item ${item.checked ? 'checked' : ''} ${inPantry ? 'in-pantry' : ''}" id="shop-item-${globalIdx}">
+        <input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleShopItem(${globalIdx}, this.checked)">
+        <span class="ing-name">${item.name}</span>
+        <span class="ing-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'')}</span>
+        ${inPantry ? `<span class="pantry-flag">✓ In pantry</span>` : ''}
+        <span class="ing-meal">${meals.join(', ')}</span>
+        <button class="del-btn" onclick="deleteShopItem(${globalIdx})" title="Remove item">×</button>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
   container.innerHTML = html;
+}
+
+function deleteShopItem(idx) {
+  const item = state.shoppingList[idx];
+  if (!item) return;
+  state.shoppingList.splice(idx, 1);
+  if (item.id) {
+    apiFetch(`/api/shopping/${item.id}`, { method: 'DELETE' });
+  }
+  renderShopping();
+  updateBadges();
 }
 
 function toggleShopItem(idx, checked) {
@@ -1033,38 +1157,100 @@ async function shoppingBought() {
 }
 
 // ════════ PANTRY ════════
+const PANTRY_CATEGORIES = [
+  { key: 'Meat & Fish',         icon: '🥩' },
+  { key: 'Dairy & Eggs',        icon: '🥛' },
+  { key: 'Fruit & Veg',         icon: '🥦' },
+  { key: 'Bakery',              icon: '🍞' },
+  { key: 'Frozen',              icon: '🧊' },
+  { key: 'Condiments & Spices', icon: '🧂' },
+  { key: 'Drinks',              icon: '🥤' },
+  { key: 'Grains',              icon: '🌾' },
+  { key: 'Tinned Goods',        icon: '🥫' },
+  { key: 'Snacks',              icon: '🍿' },
+  { key: 'Other',               icon: '📦' },
+];
+
 function renderPantry() {
   const container = document.getElementById('pantry-container');
   if (!state.pantry || !state.pantry.length) {
     container.innerHTML = `<div class="empty-state"><div class="big">🥫</div><h3>Pantry is empty</h3><p>Complete your shopping or add items manually.</p></div>`;
     return;
   }
-  let html = '<div class="pantry-grid">';
-  state.pantry.forEach((item, i) => {
-    html += `<div class="pantry-item">
-      <div class="pantry-item-info">
-        <div class="p-name">${item.name}</div>
-        <div class="p-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'—')}</div>
-        <div class="p-added">Added ${item.added_date || item.addedDate || ''}</div>
-      </div>
-      <div class="pantry-item-actions">
-        <button class="edit-btn" onclick="openEditPantryModal(${i})">Edit</button>
-        <button class="remove-btn" onclick="removePantryItem(${i})">×</button>
-      </div>
-    </div>`;
+
+  // Group items by pantry_category
+  const groups = {};
+  state.pantry.forEach(item => {
+    const cat = item.pantry_category || 'Other';
+    if (!groups[cat]) groups[cat] = [];
+    groups[cat].push(item);
   });
-  html += '</div>';
+
+  let html = '';
+  PANTRY_CATEGORIES.forEach(({ key, icon }) => {
+    const items = groups[key];
+    if (!items || !items.length) return;
+    html += `<div class="pantry-section">
+      <div class="pantry-section-header">
+        <span class="pantry-section-icon">${icon}</span>
+        <span class="pantry-section-title">${key}</span>
+        <span class="pantry-section-count">${items.length}</span>
+      </div>
+      <div class="pantry-grid">`;
+    items.forEach((item, localIdx) => {
+      const globalIdx = state.pantry.indexOf(item);
+      html += `<div class="pantry-item">
+        <div class="pantry-item-info">
+          <div class="p-name">${item.name}</div>
+          <div class="p-qty">${item.qty ? item.qty + ' ' + (item.unit||'') : (item.unit||'—')}</div>
+          <div class="p-added">Added ${item.added_date || item.addedDate || ''}</div>
+        </div>
+        <div class="pantry-item-actions">
+          <button class="edit-btn" onclick="openEditPantryModal(${globalIdx})">Edit</button>
+          <button class="remove-btn" onclick="removePantryItem(${globalIdx})">×</button>
+        </div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+
+  // Any uncategorised items that don't match known cats
+  const knownCats = PANTRY_CATEGORIES.map(c => c.key);
+  const uncategorised = state.pantry.filter(i => !knownCats.includes(i.pantry_category));
+  if (uncategorised.length) {
+    html += `<div class="pantry-section"><div class="pantry-section-header"><span class="pantry-section-icon">❓</span><span class="pantry-section-title">Uncategorised</span></div><div class="pantry-grid">`;
+    uncategorised.forEach(item => {
+      const globalIdx = state.pantry.indexOf(item);
+      html += `<div class="pantry-item"><div class="pantry-item-info"><div class="p-name">${item.name}</div><div class="p-qty">${item.qty ? item.qty+' '+(item.unit||'') : '—'}</div></div><div class="pantry-item-actions"><button class="edit-btn" onclick="openEditPantryModal(${globalIdx})">Edit</button><button class="remove-btn" onclick="removePantryItem(${globalIdx})">×</button></div></div>`;
+    });
+    html += `</div></div>`;
+  }
+
   container.innerHTML = html;
 }
+function setPantryCategory(value) {
+  const sel = document.getElementById('pantry-item-category');
+  if (!sel) return;
+  const opt = [...sel.options].find(o => o.value === value);
+  if (opt) sel.value = value;
+  else sel.value = 'Other';
+}
+
 function openAddPantryModal() {
   editingPantryIdx = null;
   document.getElementById('pantry-modal-title').textContent = 'Add Pantry Item';
   document.getElementById('pantry-item-name').value = '';
   document.getElementById('pantry-item-qty').value  = '';
   document.getElementById('pantry-item-unit').value = '';
+  setPantryCategory('Other');
+  document.getElementById('ai-cat-suggest-status').textContent = '';
   document.getElementById('pantry-modal').classList.add('open');
-  setTimeout(() => document.getElementById('pantry-item-name').focus(), 50);
+  const nameEl = document.getElementById('pantry-item-name');
+  setTimeout(() => nameEl.focus(), 50);
+  // AI suggest category when user leaves the name field
+  nameEl.onblur = () => aiSuggestPantryCategory(nameEl.value.trim());
 }
+
 function openEditPantryModal(idx) {
   editingPantryIdx = idx;
   const item = state.pantry[idx];
@@ -1072,21 +1258,54 @@ function openEditPantryModal(idx) {
   document.getElementById('pantry-item-name').value = item.name;
   document.getElementById('pantry-item-qty').value  = item.qty  || '';
   document.getElementById('pantry-item-unit').value = item.unit || '';
+  setPantryCategory(item.pantry_category || 'Other');
+  document.getElementById('ai-cat-suggest-status').textContent = '';
   document.getElementById('pantry-modal').classList.add('open');
+  const nameEl = document.getElementById('pantry-item-name');
   setTimeout(() => document.getElementById('pantry-item-qty').focus(), 50);
+  nameEl.onblur = () => aiSuggestPantryCategory(nameEl.value.trim());
+}
+
+async function aiSuggestPantryCategory(name) {
+  if (!name) return;
+  const statusEl = document.getElementById('ai-cat-suggest-status');
+  statusEl.textContent = '✨ suggesting…';
+  try {
+    const raw = await callClaude(
+      'You are a grocery categorisation assistant. Respond ONLY with the category name, nothing else.',
+      `Categorise this pantry item into exactly one of these categories:
+"Meat & Fish", "Dairy & Eggs", "Fruit & Veg", "Bakery", "Frozen", "Condiments & Spices", "Drinks", "Grains", "Tinned Goods", "Snacks", "Other"
+
+Item: "${name}"
+
+Reply with only the category name.`
+    );
+    const suggested = raw.trim().replace(/['"]/g, '');
+    const valid = ['Meat & Fish','Dairy & Eggs','Fruit & Veg','Bakery','Frozen','Condiments & Spices','Drinks','Grains','Tinned Goods','Snacks','Other'];
+    const match = valid.find(v => suggested.toLowerCase().includes(v.toLowerCase()));
+    if (match) {
+      setPantryCategory(match);
+      statusEl.textContent = '✓ AI suggested';
+    } else {
+      statusEl.textContent = '';
+    }
+  } catch(e) {
+    statusEl.textContent = '';
+  }
 }
 async function savePantryItem() {
   const name = document.getElementById('pantry-item-name').value.trim();
   if (!name) { alert('Please enter an item name.'); return; }
-  const qty  = document.getElementById('pantry-item-qty').value.trim();
-  const unit = document.getElementById('pantry-item-unit').value.trim();
+  const qty              = document.getElementById('pantry-item-qty').value.trim();
+  const unit             = document.getElementById('pantry-item-unit').value.trim();
+  const pantry_category  = document.getElementById('pantry-item-category').value;
   const date = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   if (editingPantryIdx !== null) {
     const item = state.pantry[editingPantryIdx];
-    state.pantry[editingPantryIdx] = { ...item, name, qty, unit };
-    await apiFetch(`/api/pantry/${item.id}`, { method:'PUT', body: JSON.stringify({ name, qty, unit }) });
+    state.pantry[editingPantryIdx] = { ...item, name, qty, unit, pantry_category };
+    await apiFetch(`/api/pantry/${item.id}`, { method:'PUT', body: JSON.stringify({ name, qty, unit, pantry_category }) });
   } else {
-    await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({ name, qty, unit, addedDate: date }) });
+    await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({ name, qty, unit, addedDate: date, pantry_category }) });
     state.pantry = await apiFetch('/api/pantry');
   }
   closeModal('pantry-modal');
@@ -1106,6 +1325,45 @@ function clearPantry() {
   apiFetch('/api/pantry/clear', { method:'POST' });
   renderPantry();
   updateBadges();
+}
+
+async function aiCategorisePantry() {
+  if (!state.pantry.length) { alert('Your pantry is empty.'); return; }
+  const btn = document.getElementById('ai-cat-btn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner dark"></span> Categorising…';
+  try {
+    const names = state.pantry.map(p => p.name);
+    const raw = await callClaude(
+      'You are a grocery categorisation assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
+      `Categorise each of these pantry items into one of these categories:
+"Meat & Fish", "Dairy & Eggs", "Fruit & Veg", "Bakery", "Frozen", "Condiments & Spices", "Drinks", "Grains", "Tinned Goods", "Snacks", "Other"
+
+Items: ${JSON.stringify(names)}
+
+Return a JSON array with one entry per item, in the same order:
+[{"name":"...","category":"..."}]`
+    );
+    const results = safeParseJSON(raw);
+    const valid = ['Meat & Fish','Dairy & Eggs','Fruit & Veg','Bakery','Frozen','Condiments & Spices','Drinks','Grains','Tinned Goods','Snacks','Other'];
+    // Update local state
+    const updates = [];
+    results.forEach((r, i) => {
+      const item = state.pantry[i];
+      if (!item) return;
+      const cat = valid.find(v => (r.category||'').toLowerCase().includes(v.toLowerCase())) || 'Other';
+      item.pantry_category = cat;
+      updates.push({ id: item.id, category: cat });
+    });
+    // Persist all at once
+    await apiFetch('/api/pantry/categorise', { method:'POST', body: JSON.stringify({ items: updates }) });
+    renderPantry();
+  } catch(e) {
+    alert('Could not categorise: ' + e.message);
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = '✨ Auto-categorise';
+  }
 }
 
 // ════════ AI (proxied through Worker — no credentials in browser) ════════
