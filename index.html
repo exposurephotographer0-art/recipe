@@ -4579,10 +4579,10 @@ document.addEventListener('DOMContentLoaded', async () => {
       apiFetch('/api/shopping'),
     ]);
 
-    // Seed default recipes on first load
+    // Seed / sync recipes
     const ALL_SEED_RECIPES = [...DEFAULT_RECIPES, ...WORLD_RECIPES];
     if (!recipes.length) {
-      // Seed in batches to avoid overloading the worker
+      // Fresh DB — seed everything in batches
       for (let i = 0; i < ALL_SEED_RECIPES.length; i += 20) {
         await Promise.all(ALL_SEED_RECIPES.slice(i, i + 20).map(r =>
           apiFetch('/api/recipes', { method:'POST', body: JSON.stringify(r) })
@@ -4590,7 +4590,19 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       state.recipes = ALL_SEED_RECIPES.map(r => ({...r}));
     } else {
-      state.recipes = recipes;
+      // DB has some recipes — find any world/default recipes that are missing and add them
+      const existingIds = new Set(recipes.map(r => r.id));
+      const missing = ALL_SEED_RECIPES.filter(r => !existingIds.has(r.id));
+      if (missing.length) {
+        for (let i = 0; i < missing.length; i += 20) {
+          await Promise.all(missing.slice(i, i + 20).map(r =>
+            apiFetch('/api/recipes', { method:'POST', body: JSON.stringify(r) })
+          ));
+        }
+        state.recipes = [...recipes, ...missing];
+      } else {
+        state.recipes = recipes;
+      }
     }
 
     // meals comes back as {dayIndex: meal} with string keys — normalise to numbers
@@ -5858,6 +5870,9 @@ async function callClaude(systemPrompt, userMsg) {
 }
 
 function safeParseJSON(text) {
+  // If the AI returned an already-parsed object (or array), use it directly
+  if (text !== null && typeof text === 'object') return text;
+  if (typeof text !== 'string') throw new Error('AI returned no usable response');
   const clean = text.replace(/```json|```/g, '').trim();
   return JSON.parse(clean);
 }
