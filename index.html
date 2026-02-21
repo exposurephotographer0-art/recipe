@@ -1807,4 +1807,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
+
+<script>
+async function sendMessage() {
+  const input = document.getElementById("messageInput");
+  await fetch("https://d1-template.exposurephotographer0.workers.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ content: input.value })
+  });
+  input.value = "";
+  loadMessages();
+}
+
+async function loadMessages() {
+  const res = await fetch("https://d1-template.exposurephotographer0.workers.dev/");
+  const data = await res.json();
+  document.getElementById("messages").innerHTML =
+    data.map(m => `<p>${m.content}</p>`).join("");
+}
+
+loadMessages();
+</script>
 </script></body></html>
