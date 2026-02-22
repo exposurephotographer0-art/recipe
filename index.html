@@ -5328,6 +5328,146 @@ const UK_PACK_RULES = [
   { match: ['tomato'],                            soldAs: 'g', packs: [250, 500] },
 ];
 
+// ════════ UNIT CONVERSION UTILITIES ════════
+// Converts a quantity+unit pair to a canonical base amount (grams for weight, ml for volume)
+// Returns { base: number, type: 'weight'|'volume'|'count'|'other', normalUnit: string }
+// so we can compare and combine cross-unit values.
+
+const UNIT_CONVERSIONS = {
+  // Weight → grams
+  'g':        { factor: 1,      type: 'weight', base: 'g'  },
+  'gram':     { factor: 1,      type: 'weight', base: 'g'  },
+  'grams':    { factor: 1,      type: 'weight', base: 'g'  },
+  'kg':       { factor: 1000,   type: 'weight', base: 'g'  },
+  'kilogram': { factor: 1000,   type: 'weight', base: 'g'  },
+  'kilograms':{ factor: 1000,   type: 'weight', base: 'g'  },
+  'oz':       { factor: 28.35,  type: 'weight', base: 'g'  },
+  'ounce':    { factor: 28.35,  type: 'weight', base: 'g'  },
+  'ounces':   { factor: 28.35,  type: 'weight', base: 'g'  },
+  'lb':       { factor: 453.59, type: 'weight', base: 'g'  },
+  'lbs':      { factor: 453.59, type: 'weight', base: 'g'  },
+  'pound':    { factor: 453.59, type: 'weight', base: 'g'  },
+  'pounds':   { factor: 453.59, type: 'weight', base: 'g'  },
+  // Volume → ml
+  'ml':       { factor: 1,      type: 'volume', base: 'ml' },
+  'millilitre':{ factor: 1,     type: 'volume', base: 'ml' },
+  'millilitres':{ factor: 1,    type: 'volume', base: 'ml' },
+  'l':        { factor: 1000,   type: 'volume', base: 'ml' },
+  'litre':    { factor: 1000,   type: 'volume', base: 'ml' },
+  'litres':   { factor: 1000,   type: 'volume', base: 'ml' },
+  'liter':    { factor: 1000,   type: 'volume', base: 'ml' },
+  'liters':   { factor: 1000,   type: 'volume', base: 'ml' },
+  'fl oz':    { factor: 29.57,  type: 'volume', base: 'ml' },
+  'fl. oz':   { factor: 29.57,  type: 'volume', base: 'ml' },
+  'cup':      { factor: 240,    type: 'volume', base: 'ml' },
+  'cups':     { factor: 240,    type: 'volume', base: 'ml' },
+  'tbsp':     { factor: 15,     type: 'volume', base: 'ml' },
+  'tablespoon':{ factor: 15,    type: 'volume', base: 'ml' },
+  'tablespoons':{ factor: 15,   type: 'volume', base: 'ml' },
+  'tsp':      { factor: 5,      type: 'volume', base: 'ml' },
+  'teaspoon': { factor: 5,      type: 'volume', base: 'ml' },
+  'teaspoons':{ factor: 5,      type: 'volume', base: 'ml' },
+};
+
+// Convert qty+unit to base value (grams or ml). Returns null if not convertible.
+function toBase(qty, unit) {
+  const q = parseFloat(qty);
+  if (isNaN(q)) return null;
+  const conv = UNIT_CONVERSIONS[(unit||'').toLowerCase().trim()];
+  if (!conv) return null;
+  return { value: q * conv.factor, type: conv.type, baseUnit: conv.base };
+}
+
+// Format a base value back to a friendly display (e.g. 1800g → "1.8 kg")
+function fromBase(value, type) {
+  if (type === 'weight') {
+    if (value >= 1000) return { qty: parseFloat((value / 1000).toFixed(3)).toString(), unit: 'kg' };
+    return { qty: parseFloat(value.toFixed(1)).toString(), unit: 'g' };
+  }
+  if (type === 'volume') {
+    if (value >= 1000) return { qty: parseFloat((value / 1000).toFixed(3)).toString(), unit: 'l' };
+    return { qty: parseFloat(value.toFixed(1)).toString(), unit: 'ml' };
+  }
+  return null;
+}
+
+// Attempt to combine two qty+unit pairs into one. Returns { qty, unit } or null if incompatible.
+function combineQuantities(qty1, unit1, qty2, unit2) {
+  const b1 = toBase(qty1, unit1);
+  const b2 = toBase(qty2, unit2);
+  if (b1 && b2 && b1.type === b2.type) {
+    return fromBase(b1.value + b2.value, b1.type);
+  }
+  // Fallback: same unit, plain addition
+  const q1 = parseFloat(qty1), q2 = parseFloat(qty2);
+  const u1 = (unit1||'').toLowerCase().trim(), u2 = (unit2||'').toLowerCase().trim();
+  if (!isNaN(q1) && !isNaN(q2) && u1 === u2) {
+    return { qty: String(parseFloat((q1 + q2).toFixed(3))), unit: unit1 || unit2 };
+  }
+  return null;
+}
+
+// Subtract qty2+unit2 from qty1+unit1. Returns { qty, unit, covered } where covered=true if fully in stock.
+function subtractQuantities(needQty, needUnit, haveQty, haveUnit) {
+  const bn = toBase(needQty, needUnit);
+  const bh = toBase(haveQty, haveUnit);
+  if (bn && bh && bn.type === bh.type) {
+    const remaining = bn.value - bh.value;
+    if (remaining <= 0) return { covered: true, qty: '0', unit: needUnit };
+    const disp = fromBase(remaining, bn.type);
+    return { covered: false, ...disp };
+  }
+  // Same unit fallback
+  const qn = parseFloat(needQty), qh = parseFloat(haveQty);
+  const un = (needUnit||'').toLowerCase().trim(), uh = (haveUnit||'').toLowerCase().trim();
+  if (!isNaN(qn) && !isNaN(qh) && un === uh) {
+    const remaining = qn - qh;
+    if (remaining <= 0) return { covered: true, qty: '0', unit: needUnit };
+    return { covered: false, qty: String(parseFloat(remaining.toFixed(3))), unit: needUnit };
+  }
+  return null; // incompatible units — can't compute
+}
+
+// Consolidate a list of { qty, unit, ... } items with the same name, handling cross-unit addition
+function consolidateIngredients(items) {
+  if (!items.length) return items[0] || null;
+  let totalBase = null;
+  let baseType = null;
+  let fallbackQty = parseFloat(items[0].qty) || 0;
+  let fallbackUnit = items[0].unit;
+  let canUseBase = true;
+
+  items.forEach(item => {
+    const b = toBase(item.qty, item.unit);
+    if (b) {
+      if (totalBase === null) { totalBase = b.value; baseType = b.type; }
+      else if (b.type === baseType) { totalBase += b.value; }
+      else { canUseBase = false; } // mixed weight+volume, shouldn't happen for same ingredient
+    } else {
+      // No conversion — try plain addition if same unit
+      const q = parseFloat(item.qty);
+      if (!isNaN(q) && (item.unit||'').toLowerCase() === (fallbackUnit||'').toLowerCase()) {
+        fallbackQty += q;
+      } else {
+        canUseBase = false;
+      }
+    }
+  });
+
+  const merged = { ...items[0], meals: [] };
+  items.forEach(i => { if (i.meal && !merged.meals.includes(i.meal)) merged.meals.push(i.meal); });
+
+  if (canUseBase && totalBase !== null) {
+    const disp = fromBase(totalBase, baseType);
+    merged.qty  = disp.qty;
+    merged.unit = disp.unit;
+  } else {
+    merged.qty  = String(parseFloat(fallbackQty.toFixed(3)));
+    merged.unit = fallbackUnit;
+  }
+  return merged;
+}
+
 function toShopUnit(name, qty, unit) {
   const nameLower = name.toLowerCase();
   const unitLower = (unit || '').toLowerCase().trim();
@@ -5378,37 +5518,37 @@ function generateShoppingList() {
   });
   if (!all.length) { alert('No ingredients found. Add some meals with ingredients first.'); return; }
 
-  // 2. Consolidate by name + unit
-  const merged = {};
+  // 2. Consolidate by ingredient name — handling cross-unit addition (e.g. 500g + 1kg = 1.5kg)
+  const groups = {};
   all.forEach(ing => {
-    const key = ing.name.toLowerCase();
-    if (merged[key]) {
-      if (!merged[key].meals.includes(ing.meal)) merged[key].meals.push(ing.meal);
-      const q1 = parseFloat(merged[key].qty), q2 = parseFloat(ing.qty);
-      if (!isNaN(q1) && !isNaN(q2) && (merged[key].unit||'').toLowerCase() === (ing.unit||'').toLowerCase())
-        merged[key].qty = String(q1 + q2);
-    } else {
-      merged[key] = { name: ing.name, qty: ing.qty, unit: ing.unit, meals: [ing.meal] };
-    }
+    const key = ing.name.toLowerCase().trim();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(ing);
   });
 
-  // 3. Subtract pantry stock
+  const merged = {};
+  Object.entries(groups).forEach(([key, items]) => {
+    merged[key] = consolidateIngredients(items);
+  });
+
+  // 3. Subtract pantry stock — unit-aware (e.g. need 1kg, have 800g → need 200g)
   const pantryMap = {};
-  (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+  (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase().trim()] = p; });
 
   const afterPantry = [];
   Object.values(merged).forEach(ing => {
-    const pantryItem = pantryMap[ing.name.toLowerCase()];
+    const pantryItem = pantryMap[ing.name.toLowerCase().trim()];
     if (pantryItem) {
-      const need = parseFloat(ing.qty);
-      const have = parseFloat(pantryItem.qty);
-      const sameUnit = (ing.unit||'').toLowerCase() === (pantryItem.unit||'').toLowerCase();
-      if (!isNaN(need) && !isNaN(have) && sameUnit) {
-        const remaining = need - have;
-        if (remaining <= 0) return; // fully covered — skip
-        ing = { ...ing, qty: String(remaining), pantryNote: `have ${have}${pantryItem.unit ? ' ' + pantryItem.unit : ''} in pantry` };
+      const result = subtractQuantities(ing.qty, ing.unit, pantryItem.qty, pantryItem.unit);
+      if (result) {
+        if (result.covered) return; // fully in stock — skip
+        const haveDisp = formatQtyUnit(pantryItem.qty, pantryItem.unit);
+        ing = { ...ing, qty: result.qty, unit: result.unit,
+          pantryNote: `have ${haveDisp} in pantry` };
       } else {
-        ing = { ...ing, pantryNote: `check pantry (${pantryItem.qty || ''}${pantryItem.unit || ''})` };
+        // Units incompatible — flag for manual check
+        const haveDisp = formatQtyUnit(pantryItem.qty, pantryItem.unit);
+        ing = { ...ing, pantryNote: `check pantry (${haveDisp})` };
       }
     }
     afterPantry.push(ing);
@@ -5432,6 +5572,16 @@ function generateShoppingList() {
   renderShopping();
   updateBadges();
   showView('shopping');
+}
+
+// Helper: format a qty+unit pair nicely (e.g. "800 g", "1.5 kg")
+function formatQtyUnit(qty, unit) {
+  const b = toBase(qty, unit);
+  if (b) {
+    const disp = fromBase(b.value, b.type);
+    return `${disp.qty} ${disp.unit}`;
+  }
+  return `${qty || ''}${unit ? ' ' + unit : ''}`.trim();
 }
 
 // UK supermarket aisle order
