@@ -5973,28 +5973,30 @@ async function confirmCooked() {
     }
   });
 
-  // Apply deductions to pantry state + persist
+  // Apply deductions to pantry state + persist (unit-aware: tbsp deducted from l, g from kg, etc.)
   const saveOps = [];
   for (const { pantryItem, usedQty, unit } of updates) {
-    const currentQty = parseFloat(pantryItem.qty);
-    let newQty = null;
+    if (usedQty === null) continue; // no quantity entered — leave unchanged
 
-    if (!isNaN(currentQty) && usedQty !== null && pantryItem.unit === unit) {
-      newQty = Math.max(0, currentQty - usedQty);
-    }
-
+    const result = subtractQuantities(pantryItem.qty, pantryItem.unit, String(usedQty), unit);
     const idx = state.pantry.indexOf(pantryItem);
-    if (newQty !== null && newQty <= 0) {
-      // Remove from pantry — fully used up
-      state.pantry.splice(idx, 1);
-      saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, { method: 'DELETE' }));
+
+    if (result) {
+      if (result.covered) {
+        // Fully used up — remove from pantry
+        state.pantry.splice(idx, 1);
+        saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, { method: 'DELETE' }));
+      } else {
+        // Partial — update with normalised qty+unit (e.g. 1.5l minus 10tbsp → 1.35l)
+        state.pantry[idx] = { ...pantryItem, qty: result.qty, unit: result.unit };
+        saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ name: pantryItem.name, qty: result.qty, unit: result.unit, pantry_category: pantryItem.pantry_category }),
+        }));
+      }
     } else {
-      const updatedQty = newQty !== null ? String(newQty) : pantryItem.qty;
-      state.pantry[idx] = { ...pantryItem, qty: updatedQty };
-      saveOps.push(apiFetch(`/api/pantry/${pantryItem.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ name: pantryItem.name, qty: updatedQty, unit: pantryItem.unit, pantry_category: pantryItem.pantry_category }),
-      }));
+      // Incompatible units (e.g. kg vs ml) — leave unchanged, can't compute
+      console.warn(`Cannot deduct ${usedQty} ${unit} from ${pantryItem.name} (${pantryItem.qty} ${pantryItem.unit}) — incompatible units`);
     }
   }
 
