@@ -273,6 +273,16 @@
   .recipe-meta { font-size:0.75rem; color:var(--border); }
   .recipe-actions { display:flex; gap:7px; margin-top:4px; flex-wrap:wrap; }
 
+  /* FAVOURITE STAR */
+  .fav-btn {
+    background: none; border: none; cursor: pointer;
+    font-size: 1.1rem; line-height: 1; padding: 2px 4px;
+    transition: transform 0.15s; flex-shrink: 0; opacity: 0.35;
+  }
+  .fav-btn:hover { transform: scale(1.25); opacity: 0.7; }
+  .fav-btn.is-fav { opacity: 1; }
+  .filter-chip.fav-chip.active { background: #d4a017; border-color: #d4a017; color: #fff; }
+
   /* recipe detail */
   .ing-chips { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:16px; }
   .ing-chip {
@@ -489,6 +499,9 @@
     <div class="recipe-filters" id="recipe-filters">
       <!-- Cost -->
       <button class="filter-chip" data-filter="cost" data-value="under5" onclick="toggleFilter(this)">💷 Budget (under £5 total)</button>
+      <div class="filter-divider"></div>
+      <!-- Favourites -->
+      <button class="filter-chip fav-chip" data-filter="special" data-value="favourites" onclick="toggleFilter(this)">⭐ Favourites</button>
       <div class="filter-divider"></div>
       <!-- Cuisine category -->
       <button class="filter-chip" data-filter="cuisine" data-value="Pasta" onclick="toggleFilter(this)">🍝 Pasta</button>
@@ -4944,6 +4957,9 @@ function applyRecipeFilters() {
   if (activeFilters.special.has('pantry')) {
     filtered = filtered.filter(r => canMakeFromPantry(r));
   }
+  if (activeFilters.special.has('favourites')) {
+    filtered = filtered.filter(r => r.favourite === true || r.favourite === 1);
+  }
 
   if (activeFilters.calories === 'under600') {
     filtered = filtered.filter(r => r.calories && Number(r.calories) < 600);
@@ -5006,6 +5022,7 @@ function renderRecipes(recipesOrSearch) {
     const inPantry  = canMakeFromPantry(r);
     const totalCost = calcTotalCost(r);
     const serves    = parseInt(r.serves) || 4;
+    const isFav     = r.favourite === true || r.favourite === 1;
     const tags = [];
     if (cookTime) tags.push(`<span class="cook-time-tag">⏱ ${cookTime < 60 ? cookTime+'m' : Math.round(cookTime/60)+'h'}</span>`);
     if (r.onePot) tags.push(`<span class="one-pot-tag">🥘 1-pot</span>`);
@@ -5017,7 +5034,10 @@ function renderRecipes(recipesOrSearch) {
     <div class="recipe-card">
       <div class="recipe-card-header">
         <div class="recipe-name">${r.name}</div>
-        <span class="recipe-tag">${r.category||''}</span>
+        <div style="display:flex;align-items:center;gap:4px;flex-shrink:0">
+          <button class="fav-btn ${isFav ? 'is-fav' : ''}" onclick="toggleFavourite('${r.id}')" title="${isFav ? 'Remove from favourites' : 'Add to favourites'}">${isFav ? '⭐' : '☆'}</button>
+          <span class="recipe-tag">${r.category||''}</span>
+        </div>
       </div>
       <div class="recipe-desc">${r.desc||''}</div>
       ${tags.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap">${tags.join('')}</div>` : ''}
@@ -5066,7 +5086,10 @@ function viewRecipe(id) {
   }
 
   document.getElementById('recipe-detail-content').innerHTML = `
-    <h2>${r.name}</h2>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">
+      <h2 style="flex:1;margin-bottom:0">${r.name}</h2>
+      <button class="fav-btn ${r.favourite ? 'is-fav' : ''}" onclick="toggleFavourite('${r.id}');document.querySelector('#recipe-detail-modal h2').textContent='${r.name.replace(/'/g,"\\'")}';this.classList.toggle('is-fav');this.textContent=this.classList.contains('is-fav')?'⭐':'☆'" title="${r.favourite ? 'Remove from favourites' : 'Add to favourites'}" style="font-size:1.4rem;margin-top:2px">${r.favourite ? '⭐' : '☆'}</button>
+    </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
       <span class="recipe-tag">${r.category||''}</span>
       <span class="recipe-tag">Serves ${r.serves}</span>
@@ -5155,6 +5178,7 @@ function saveRecipe() {
     cookTime:    cookTimeVal ? Number(cookTimeVal) : null,
     calories:    caloriesVal ? Number(caloriesVal) : null,
     onePot:      document.getElementById('rec-onepot').checked,
+    favourite:   existingRecipe ? (existingRecipe.favourite || false) : false,
   };
   if (editingRecipeId) {
     const idx = state.recipes.findIndex(r => r.id === editingRecipeId);
@@ -5175,6 +5199,14 @@ function deleteRecipe(id) {
   const searchEl = document.querySelector('#view-recipes input');
   applyRecipeFilters();
   updateBadges();
+}
+
+function toggleFavourite(id) {
+  const recipe = state.recipes.find(r => r.id === id);
+  if (!recipe) return;
+  recipe.favourite = !recipe.favourite;
+  apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) });
+  applyRecipeFilters(); // re-render cards to update star
 }
 
 function addRecipeToNextDay(recipeId) {
