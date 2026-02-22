@@ -4547,15 +4547,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   showLoading(true);
   try {
-    const [recipes, meals, pantry, shopping] = await Promise.all([
+    const [recipes, meals, pantry, shopping, deletedSeedIds] = await Promise.all([
       apiFetch('/api/recipes'),
       apiFetch('/api/meals'),
       apiFetch('/api/pantry'),
       apiFetch('/api/shopping'),
+      apiFetch('/api/deleted-seeds').catch(() => []),
     ]);
 
-    // Seed / sync recipes
-    const ALL_SEED_RECIPES = [...DEFAULT_RECIPES, ...WORLD_RECIPES];
+    // Seed / sync recipes — never re-add seeds the user has deliberately deleted
+    const deletedSeedSet = new Set(deletedSeedIds);
+    const ALL_SEED_RECIPES = [...DEFAULT_RECIPES, ...WORLD_RECIPES]
+      .filter(r => !deletedSeedSet.has(r.id));
     if (!recipes.length) {
       // Fresh DB — seed everything in batches
       for (let i = 0; i < ALL_SEED_RECIPES.length; i += 20) {
@@ -4565,7 +4568,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
       state.recipes = ALL_SEED_RECIPES.map(r => ({...r}));
     } else {
-      // DB has some recipes — find any world/default recipes that are missing and add them
+      // DB has some recipes — add any seeds that are genuinely missing (not deleted)
       const existingIds = new Set(recipes.map(r => r.id));
       const missing = ALL_SEED_RECIPES.filter(r => !existingIds.has(r.id));
       if (missing.length) {
