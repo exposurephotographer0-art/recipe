@@ -471,12 +471,24 @@
     </div>
 
     <!-- Search + Filters -->
-    <div style="margin-bottom:14px">
-      <input type="text" placeholder="Search recipes, category or country…" id="recipe-search" oninput="applyRecipeFilters()" style="max-width:380px">
+    <div style="margin-bottom:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <input type="text" placeholder="Search recipes, category or country…" id="recipe-search" oninput="applyRecipeFilters()" style="max-width:340px;flex:1">
+      <div style="display:flex;align-items:center;gap:6px;white-space:nowrap">
+        <label style="font-size:0.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin:0">Sort</label>
+        <select id="recipe-sort" onchange="applyRecipeFilters()" style="width:auto;padding:8px 12px;font-size:0.82rem">
+          <option value="added">Recently added</option>
+          <option value="name">A – Z</option>
+          <option value="name-desc">Z – A</option>
+          <option value="cooktime">Cook time (fastest)</option>
+          <option value="calories">Calories (lowest)</option>
+          <option value="cost">Cost (cheapest)</option>
+          <option value="country">Country</option>
+        </select>
+      </div>
     </div>
     <div class="recipe-filters" id="recipe-filters">
       <!-- Cost -->
-      <button class="filter-chip" data-filter="cost" data-value="under5" onclick="toggleFilter(this)">💵 Under $5</button>
+      <button class="filter-chip" data-filter="cost" data-value="under5" onclick="toggleFilter(this)">💷 Budget (under £5 total)</button>
       <div class="filter-divider"></div>
       <!-- Cuisine category -->
       <button class="filter-chip" data-filter="cuisine" data-value="Pasta" onclick="toggleFilter(this)">🍝 Pasta</button>
@@ -493,6 +505,7 @@
       <div class="filter-divider"></div>
       <!-- Time -->
       <button class="filter-chip" data-filter="time" data-value="under30" onclick="toggleFilter(this)">⏱ Under 30 min</button>
+      <button class="filter-chip" data-filter="time" data-value="under60" onclick="toggleFilter(this)">⏱ Under 1 hr</button>
       <div class="filter-divider"></div>
       <!-- Special -->
       <button class="filter-chip pantry-chip" data-filter="special" data-value="pantry" onclick="toggleFilter(this)">✓ Can make now</button>
@@ -4608,6 +4621,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderShopping();
   renderPantry();
   updateBadges();
+
+  // Restore last tab from URL hash
+  const validViews = ['planner','recipes','shopping','pantry'];
+  const hash = location.hash.replace('#','');
+  if (validViews.includes(hash)) showView(hash);
 });
 
 // ════════ UI HELPERS ════════
@@ -4624,6 +4642,7 @@ function showView(name) {
   document.getElementById('view-' + name).classList.add('active');
   const names = ['planner','recipes','shopping','pantry'];
   document.querySelectorAll('nav button').forEach((b,i) => b.classList.toggle('active', names[i] === name));
+  location.hash = name;
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -4701,6 +4720,7 @@ function renderWeek() {
              <button class="ai-btn" onclick="aiSuggestDay(${i})" title="AI suggestions" style="font-size:0.65rem;padding:4px 8px">✨</button>`
           : `<button class="btn-sm" onclick="openPickerModal(${i})">Change</button>
              <button class="btn-sm" onclick="openMealModal(${i})">Edit</button>
+             ${meal.recipeId ? `<button class="btn-sm" onclick="viewRecipe('${meal.recipeId}')">📖 Recipe</button>` : ''}
              <button class="btn-sm danger" onclick="removeMeal(${i})">Remove</button>
              <button class="btn-sm" style="border-color:var(--success)33;color:var(--success)" onclick="openCookedModal(${i})" title="I cooked this!">✓ Cooked</button>`
         }
@@ -4873,7 +4893,25 @@ const COUNTRY_FLAGS = {
   'Portugal':'🇵🇹','Germany':'🇩🇪','Ukraine':'🇺🇦','Russia':'🇷🇺','Iran':'🇮🇷',
   'Indonesia':'🇮🇩','Poland':'🇵🇱','South Africa':'🇿🇦','Austria':'🇦🇹','Egypt':'🇪🇬'
 };
+const COUNTRY_ADJECTIVES = {
+  'Italy':'Italian','Japan':'Japanese','Mexico':'Mexican','India':'Indian','China':'Chinese',
+  'France':'French','Spain':'Spanish','Thailand':'Thai','Greece':'Greek','Morocco':'Moroccan',
+  'Peru':'Peruvian','Turkey':'Turkish','Lebanon':'Lebanese','Nigeria':'Nigerian','Korea':'Korean',
+  'Vietnam':'Vietnamese','Brazil':'Brazilian','Argentina':'Argentine','Ethiopia':'Ethiopian',
+  'USA':'American','Portugal':'Portuguese','Germany':'German','Ukraine':'Ukrainian',
+  'Russia':'Russian','Iran':'Iranian','Indonesia':'Indonesian','Poland':'Polish',
+  'South Africa':'South African','Austria':'Austrian','Egypt':'Egyptian',
+  'UK':'British','Jamaica':'Jamaican','Malaysia':'Malaysian','Taiwan':'Taiwanese',
+  'Cambodia':'Cambodian','Laos':'Laotian','Myanmar':'Burmese','Nepal':'Nepali',
+  'Pakistan':'Pakistani','Philippines':'Filipino','Sri Lanka':'Sri Lankan',
+  'Sweden':'Swedish','Netherlands':'Dutch','Belgium':'Belgian','Colombia':'Colombian',
+  'Chile':'Chilean','Venezuela':'Venezuelan','Cuba':'Cuban','Ghana':'Ghanaian',
+  'Kenya':'Kenyan','Senegal':'Senegalese','Uzbekistan':'Uzbek','Jordan':'Jordanian',
+  'Israel':'Israeli','Saudi Arabia':'Saudi','Georgia':'Georgian','Hungary':'Hungarian',
+  'Tunisia':'Tunisian','Yemen':'Yemeni','Iraq':'Iraqi',
+};
 function countryFlag(country) { return country ? (COUNTRY_FLAGS[country] || '🌍') : ''; }
+function countryAdjective(country) { return country ? (COUNTRY_ADJECTIVES[country] || country) : ''; }
 
 function applyRecipeFilters() {
   const q = (document.getElementById('recipe-search')?.value || '').toLowerCase();
@@ -4882,11 +4920,14 @@ function applyRecipeFilters() {
     r.name.toLowerCase().includes(q) ||
     (r.category||'').toLowerCase().includes(q) ||
     (r.country||'').toLowerCase().includes(q) ||
+    (countryAdjective(r.country)||'').toLowerCase().includes(q) ||
     (r.desc||'').toLowerCase().includes(q)
   );
 
   if (activeFilters.time === 'under30') {
     filtered = filtered.filter(r => { const t = estimateCookTime(r); return t !== null && t <= 30; });
+  } else if (activeFilters.time === 'under60') {
+    filtered = filtered.filter(r => { const t = estimateCookTime(r); return t !== null && t <= 60; });
   }
 
   if (activeFilters.ingredients === 'few') {
@@ -4912,11 +4953,26 @@ function applyRecipeFilters() {
     filtered = filtered.filter(r => {
       const tc = calcTotalCost(r);
       if (!tc) return false;
-      const serves = parseInt(r.serves) || 4;
-      // Convert £ to $ approx (1 GBP ≈ 1.27 USD) — cost filter uses per-portion cost
-      return (tc / serves) * 1.27 < 5;
+      // Budget: total meal cost under £5
+      return tc < 5;
     });
   }
+
+  // Sorting
+  const sortBy = document.getElementById('recipe-sort')?.value || 'added';
+  if (sortBy === 'name') filtered.sort((a,b) => a.name.localeCompare(b.name));
+  else if (sortBy === 'name-desc') filtered.sort((a,b) => b.name.localeCompare(a.name));
+  else if (sortBy === 'cooktime') filtered.sort((a,b) => {
+    const ta = estimateCookTime(a) ?? 9999, tb = estimateCookTime(b) ?? 9999;
+    return ta - tb;
+  });
+  else if (sortBy === 'calories') filtered.sort((a,b) => (Number(a.calories)||9999) - (Number(b.calories)||9999));
+  else if (sortBy === 'cost') filtered.sort((a,b) => {
+    const ca = calcTotalCost(a) || 9999, cb = calcTotalCost(b) || 9999;
+    return ca - cb;
+  });
+  else if (sortBy === 'country') filtered.sort((a,b) => (countryAdjective(a.country)||'zzz').localeCompare(countryAdjective(b.country)||'zzz'));
+  // 'added' = default order from API (newest first) — no sort needed
 
   renderRecipes(filtered);
 }
@@ -4956,7 +5012,7 @@ function renderRecipes(recipesOrSearch) {
     if (inPantry) tags.push(`<span class="pantry-match-tag">✓ Can make now</span>`);
     if (r.calories) tags.push(`<span class="cook-time-tag calorie-tag">🔥 ${r.calories} kcal/portion</span>`);
     if (totalCost) tags.push(`<span class="cook-time-tag cost-tag">💷 £${(totalCost/serves).toFixed(2)}/portion</span>`);
-    if (r.country) tags.push(`<span class="cook-time-tag" style="color:#5c4433">${countryFlag(r.country)} ${r.country}</span>`);
+    if (r.country) tags.push(`<span class="cook-time-tag" style="color:#5c4433">${countryFlag(r.country)} ${countryAdjective(r.country)}</span>`);
     return `
     <div class="recipe-card">
       <div class="recipe-card-header">
@@ -5014,7 +5070,7 @@ function viewRecipe(id) {
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
       <span class="recipe-tag">${r.category||''}</span>
       <span class="recipe-tag">Serves ${r.serves}</span>
-      ${r.country ? `<span class="recipe-tag">${countryFlag(r.country)} ${r.country}</span>` : ''}
+      ${r.country ? `<span class="recipe-tag">${countryFlag(r.country)} ${countryAdjective(r.country)}</span>` : ''}
       ${r.cookTime ? `<span class="cook-time-tag" style="display:inline-block;border-radius:20px;font-size:0.65rem;padding:3px 8px">⏱ ${r.cookTime}m</span>` : ''}
       ${r.calories ? `<span class="calorie-pill">🔥 ${r.calories} kcal/portion</span>` : ''}
       ${totalCost ? `<span class="cost-pill">💷 £${(totalCost/serves).toFixed(2)}/portion</span>` : ''}
@@ -6059,24 +6115,25 @@ async function runAiWeekPlan() {
   btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span> Planning…';
   try {
+    const catalogNames = state.recipes.map(r => r.name);
+    if (!catalogNames.length) { alert('No recipes in your catalog yet. Add some recipes first!'); return; }
     const raw = await callClaude(
       'You are a dinner planning assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
-      `Plan 7 dinners Monday–Sunday.
-My recipe catalog: ${state.recipes.map(r => r.name).join(', ') || 'none'}.
+      `Plan 7 dinners Monday–Sunday choosing ONLY from the recipe catalog below. Do not invent recipes.
+Recipe catalog: ${catalogNames.join(', ')}.
 Pantry: ${state.pantry.map(p => p.name).join(', ') || 'unknown'}.
 Preferences: ${prefs || 'none'}.
 Return JSON array of 7 objects (Monday first):
-[{"day":"Monday","name":"...","fromCatalog":true}]
-Prioritise recipes from the catalog. Vary types of food.`
+[{"day":"Monday","name":"exact recipe name from catalog"}]
+Every "name" MUST exactly match a recipe from the catalog list above. Vary types of food.`
     );
     const plan = safeParseJSON(raw);
     closeModal('ai-week-modal');
     const saves = [];
     plan.slice(0, 7).forEach((item, i) => {
       const recipe = state.recipes.find(r => r.name.toLowerCase() === item.name.toLowerCase());
-      const meal = recipe
-        ? { name: recipe.name, notes: recipe.steps||'', ingredients: (recipe.ingredients||[]).map(x => ({...x})), recipeId: recipe.id }
-        : { name: item.name, notes: '', ingredients: [] };
+      if (!recipe) return; // skip if not found in catalog
+      const meal = { name: recipe.name, notes: recipe.steps||'', ingredients: (recipe.ingredients||[]).map(x => ({...x})), recipeId: recipe.id };
       state.meals[i] = meal;
       saves.push(apiFetch('/api/meals', { method:'POST', body: JSON.stringify({ dayIndex: i, meal }) }));
     });
@@ -6101,16 +6158,32 @@ function calcTotalCost(recipe) {
 async function aiUpdateAllCosts() {
   if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
   const btn = document.getElementById('ai-costs-btn');
+
+  // Separate unpriced and already-priced recipes
+  const unpriced = state.recipes.filter(r => !calcTotalCost(r));
+  const alreadyPriced = state.recipes.filter(r => calcTotalCost(r) > 0);
+
+  if (!unpriced.length) {
+    // All already priced — ask if they want to update all
+    if (!confirm(`All ${alreadyPriced.length} recipes already have cost info. Would you like to re-price them all?`)) return;
+    await _runCostUpdate(state.recipes, btn);
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner dark"></span> Fetching costs…';
+  await _runCostUpdate(unpriced, btn, alreadyPriced.length);
+}
 
-  const BATCH = 2; // 2 recipes per batch avoids token limit truncation
-  let updated = 0, skipped = 0;
+async function _runCostUpdate(recipes, btn, skippedCount = 0) {
+  btn.disabled = true;
+  const BATCH = 2;
+  let updated = 0, failed = 0;
 
-  for (let i = 0; i < state.recipes.length; i += BATCH) {
-    const batch = state.recipes.slice(i, i + BATCH);
-    const done = Math.min(i + BATCH, state.recipes.length);
-    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length}…`;
+  for (let i = 0; i < recipes.length; i += BATCH) {
+    const batch = recipes.slice(i, i + BATCH);
+    const done = Math.min(i + BATCH, recipes.length);
+    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${recipes.length}…`;
     try {
       const recipeList = batch.map(r => ({
         id: r.id, name: r.name, serves: r.serves || '4',
@@ -6124,7 +6197,7 @@ Return ONLY this JSON structure, nothing else:
 Recipes: ${JSON.stringify(recipeList)}`
       );
       const results = safeParseJSON(raw);
-      if (!Array.isArray(results)) { skipped++; continue; }
+      if (!Array.isArray(results)) { failed++; continue; }
       const saves = [];
       results.forEach(res => {
         if (!res.id || !Array.isArray(res.ingredients)) return;
@@ -6141,13 +6214,33 @@ Recipes: ${JSON.stringify(recipeList)}`
       await Promise.all(saves);
     } catch(e) {
       console.warn(`Costs batch ${i}–${done} skipped:`, e.message);
-      skipped++;
+      failed++;
     }
   }
+
   applyRecipeFilters();
   renderWeek();
-  btn.innerHTML = skipped ? `✓ ${updated} priced (${skipped} batches skipped)` : `✓ ${updated} recipes priced`;
-  setTimeout(() => { btn.disabled = false; btn.innerHTML = '💷 AI Update Costs'; }, 3000);
+
+  const msg = failed
+    ? `✓ ${updated} priced (${failed} batches failed)`
+    : `✓ ${updated} recipes priced`;
+
+  btn.innerHTML = msg;
+
+  // If we only updated unpriced ones, ask about the rest
+  if (skippedCount > 0) {
+    setTimeout(async () => {
+      if (confirm(`${updated} new recipes priced! There are also ${skippedCount} recipes that already had cost info. Would you like to re-price those too?`)) {
+        const alreadyPriced = state.recipes.filter(r => calcTotalCost(r) > 0);
+        await _runCostUpdate(alreadyPriced, btn);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '💷 AI Update Costs';
+      }
+    }, 500);
+  } else {
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = '💷 AI Update Costs'; }, 3000);
+  }
 }
 
 // ── AI Update All Calories ───────────────────────────────────────
