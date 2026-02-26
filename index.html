@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -141,7 +142,7 @@
   input:focus, textarea:focus, select:focus { border-color:var(--accent); }
   textarea { resize:vertical; min-height:75px; }
   select option { background:var(--surface2); }
-  .ingredient-row { display:grid; grid-template-columns:1fr 75px 85px auto; gap:7px; margin-bottom:7px; align-items:center; }
+  .ingredient-row { display:grid; grid-template-columns:1fr 75px 110px auto; gap:7px; margin-bottom:7px; align-items:start; }
   .ingredient-row input { margin:0; }
   .add-ingredient-btn {
     background:none; border:1px dashed var(--border); color:var(--text-muted);
@@ -732,7 +733,8 @@
       </div>
       <div class="form-group">
         <label>Unit</label>
-        <input type="text" id="pantry-item-unit" placeholder="g, ml, pcs…">
+        <select id="pantry-item-unit"></select>
+        <input type="text" id="pantry-item-unit-other" placeholder="Type unit…" style="display:none;margin-top:6px">
       </div>
     </div>
     <div class="modal-actions">
@@ -4545,6 +4547,126 @@ const WORLD_RECIPES = [
 const API   = 'https://d1-template.exposurephotographer0.workers.dev';
 const DAYS  = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 
+// ════════ UNIT OPTIONS ════════
+const UNIT_OPTIONS = [
+  { value: '',          label: '— (single piece)' },
+  { value: 'g',         label: 'g' },
+  { value: 'kg',        label: 'kg' },
+  { value: 'cup(s)',    label: 'cup(s)' },
+  { value: 'ml',        label: 'ml' },
+  { value: 'l',         label: 'l' },
+  { value: 'tsp',       label: 'tsp' },
+  { value: 'tbsp',      label: 'tbsp' },
+  { value: 'tin(s)',    label: 'tin(s)' },
+  { value: 'jar(s)',    label: 'jar(s)' },
+  { value: 'pack(s)',   label: 'pack(s)' },
+  { value: 'slice(s)',  label: 'slice(s)' },
+  { value: 'cloves',    label: 'cloves' },
+  { value: 'sprigs',    label: 'sprigs' },
+  { value: 'sticks',    label: 'sticks' },
+  { value: 'heads',     label: 'heads' },
+  { value: 'handful',   label: 'handful' },
+  { value: 'sheets',    label: 'sheets' },
+  { value: 'stalks',    label: 'stalks' },
+  { value: 'bunch',     label: 'bunch' },
+  { value: '__other__', label: 'Other…' },
+];
+
+// Aliases map old/variant unit strings to canonical dropdown values
+const UNIT_ALIASES = {
+  'slices':'slice(s)', 'slice':'slice(s)',
+  'tins':'tin(s)', 'tin':'tin(s)',
+  'jars':'jar(s)', 'jar':'jar(s)',
+  'packs':'pack(s)', 'pack':'pack(s)',
+  'cups':'cup(s)', 'cup':'cup(s)',
+  'clove':'cloves',
+  'sprig':'sprigs',
+  'stick':'sticks',
+  'stalk':'stalks',
+  'head':'heads',
+  'sheet':'sheets',
+  'loaf':'', // treat as single piece
+  'pieces':'', 'piece':'',
+};
+
+// Normalize a unit string to canonical dropdown value (handling aliases)
+function canonicalUnit(unit) {
+  const s = (unit || '').trim();
+  if (UNIT_ALIASES.hasOwnProperty(s.toLowerCase())) return UNIT_ALIASES[s.toLowerCase()];
+  return s;
+}
+
+// Build a <select> options HTML from UNIT_OPTIONS, with a currently selected value
+function buildUnitSelectHTML(selectedUnit) {
+  const su = canonicalUnit(selectedUnit || '');
+  const knownValues = UNIT_OPTIONS.filter(o => o.value !== '__other__').map(o => o.value);
+  const isKnown = knownValues.includes(su);
+  return UNIT_OPTIONS.map(opt => {
+    const sel = (!isKnown && su && opt.value === '__other__') ? ' selected' : (opt.value === su ? ' selected' : '');
+    return `<option value="${opt.value}"${sel}>${opt.label}</option>`;
+  }).join('');
+}
+
+// Get the actual unit value from a unit select + other input pair
+function getUnitValue(selectId, otherId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return '';
+  if (sel.value === '__other__') {
+    const other = document.getElementById(otherId);
+    return other ? other.value.trim() : '';
+  }
+  return sel.value; // already canonical
+}
+
+// Set unit select + other input from a stored value
+function setUnitSelect(selectId, otherId, value) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const v = canonicalUnit(value || '');
+  const knownValues = UNIT_OPTIONS.filter(o => o.value !== '__other__').map(o => o.value);
+  if (knownValues.includes(v)) {
+    sel.value = v;
+    const other = document.getElementById(otherId);
+    if (other) other.style.display = 'none';
+  } else if (v) {
+    sel.value = '__other__';
+    const other = document.getElementById(otherId);
+    if (other) { other.value = v; other.style.display = 'block'; }
+  } else {
+    sel.value = '';
+    const other = document.getElementById(otherId);
+    if (other) other.style.display = 'none';
+  }
+}
+
+// Wire up "Other…" reveal for a select+other pair
+function wireUnitSelect(selectId, otherId) {
+  const sel = document.getElementById(selectId);
+  const other = document.getElementById(otherId);
+  if (!sel || !other) return;
+  sel.addEventListener('change', () => {
+    other.style.display = sel.value === '__other__' ? 'block' : 'none';
+  });
+}
+
+// ════════ INGREDIENT NAME NORMALISATION (singular/plural) ════════
+// Returns a canonical lowercase key for an ingredient name so that
+// "onion" and "onions" (etc.) map to the same bucket.
+const IRREGULAR_PLURALS = {
+  'tomatoes':'tomato','potatoes':'potato','leaves':'leaf','halves':'half',
+  'loaves':'loaf','knives':'knife','shelves':'shelf',
+};
+function normalizeIngName(name) {
+  const s = (name || '').toLowerCase().trim();
+  if (IRREGULAR_PLURALS[s]) return IRREGULAR_PLURALS[s];
+  // Strip common suffixes: -es, -s (but not -ss)
+  if (s.endsWith('ies') && s.length > 4) return s.slice(0, -3) + 'y'; // berries→berry
+  if (s.endsWith('oes') && s.length > 4) return s.slice(0, -2);       // tomatoes→tomato
+  if (s.endsWith('es') && s.length > 4 && !s.endsWith('ses') && !s.endsWith('xes') && !s.endsWith('zes') && !s.endsWith('ches') && !s.endsWith('shes')) return s.slice(0, -1); // cloves→clove (careful)
+  if (s.endsWith('s') && s.length > 3 && !s.endsWith('ss')) return s.slice(0, -1);
+  return s;
+}
+
 // ════════ STATE ════════
 let state = { meals:{}, recipes:[], shoppingList:[], pantry:[] };
 let editingDay = null, pickerDay = null;
@@ -4570,6 +4692,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('.modal-overlay').forEach(el => {
     el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
   });
+
+  // Pre-populate pantry unit select
+  const pantryUnitSel = document.getElementById('pantry-item-unit');
+  if (pantryUnitSel) {
+    pantryUnitSel.innerHTML = buildUnitSelectHTML('');
+    wireUnitSelect('pantry-item-unit', 'pantry-item-unit-other');
+  }
 
   showLoading(true);
   try {
@@ -4672,11 +4801,21 @@ function collectIngredients(prefix) {
   document.querySelectorAll(`[id^="${prefix}-row-"]`).forEach(row => {
     const id = row.id.replace(`${prefix}-row-`, '');
     const n = document.getElementById(`${prefix}-name-${id}`);
-    if (n && n.value.trim()) ings.push({
-      name: n.value.trim(),
-      qty:  (document.getElementById(`${prefix}-qty-${id}`)?.value  || '').trim(),
-      unit: (document.getElementById(`${prefix}-unit-${id}`)?.value || '').trim(),
-    });
+    if (n && n.value.trim()) {
+      // Support both old text inputs and new select+other pattern
+      let unit = '';
+      const selEl = document.getElementById(`${prefix}-unit-${id}`);
+      if (selEl && selEl.tagName === 'SELECT') {
+        unit = getUnitValue(`${prefix}-unit-${id}`, `${prefix}-unit-other-${id}`);
+      } else if (selEl) {
+        unit = selEl.value.trim();
+      }
+      ings.push({
+        name: n.value.trim(),
+        qty:  (document.getElementById(`${prefix}-qty-${id}`)?.value  || '').trim(),
+        unit,
+      });
+    }
   });
   return ings;
 }
@@ -4813,12 +4952,22 @@ function addIngredientRow(ing = null) {
   const row = document.createElement('div');
   row.className = 'ingredient-row';
   row.id = `ing-row-${id}`;
+  const rawUnit = ing ? (ing.unit || '') : '';
+  const canonUnit = canonicalUnit(rawUnit);
+  const knownValues = UNIT_OPTIONS.filter(o => o.value !== '__other__').map(o => o.value);
+  const isKnown = knownValues.includes(canonUnit);
+  const otherVal = (!isKnown && rawUnit) ? esc(rawUnit) : '';
+  const showOther = (!isKnown && rawUnit) ? '' : 'none';
   row.innerHTML = `
     <input type="text" placeholder="Ingredient" value="${ing ? esc(ing.name) : ''}" id="ing-name-${id}">
-    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ing-qty-${id}">
-    <input type="text" placeholder="Unit"       value="${ing ? esc(ing.unit) : ''}" id="ing-unit-${id}">
+    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ing-qty-${id}" style="max-width:75px">
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <select id="ing-unit-${id}" style="margin:0;font-size:0.82rem;padding:7px 8px">${buildUnitSelectHTML(rawUnit)}</select>
+      <input type="text" id="ing-unit-other-${id}" placeholder="Type unit…" style="display:${showOther};font-size:0.82rem;padding:6px 8px;margin:0" value="${otherVal}">
+    </div>
     <button class="icon-btn" onclick="document.getElementById('ing-row-${id}').remove()">×</button>`;
   document.getElementById('ingredients-container').appendChild(row);
+  wireUnitSelect(`ing-unit-${id}`, `ing-unit-other-${id}`);
 }
 function saveMeal() {
   const name = document.getElementById('meal-name').value.trim();
@@ -4890,10 +5039,10 @@ function estimateCookTime(recipe) {
 
 function canMakeFromPantry(recipe) {
   if (!state.pantry || !state.pantry.length) return false;
-  const pantryNames = state.pantry.map(p => p.name.toLowerCase());
-  const ings = (recipe.ingredients || []).map(i => i.name.toLowerCase());
+  const pantryNorms = state.pantry.map(p => normalizeIngName(p.name));
+  const ings = (recipe.ingredients || []).map(i => normalizeIngName(i.name));
   if (!ings.length) return false;
-  const matches = ings.filter(ing => pantryNames.some(p => p.includes(ing) || ing.includes(p)));
+  const matches = ings.filter(ing => pantryNorms.some(p => p.includes(ing) || ing.includes(p)));
   // "Can make now" = 70%+ of ingredients in pantry
   return matches.length / ings.length >= 0.7;
 }
@@ -5143,12 +5292,22 @@ function addRecipeIngRow(ing = null) {
   const row = document.createElement('div');
   row.className = 'ingredient-row';
   row.id = `ring-row-${id}`;
+  const rawUnit = ing ? (ing.unit || '') : '';
+  const canonUnit = canonicalUnit(rawUnit);
+  const knownValues = UNIT_OPTIONS.filter(o => o.value !== '__other__').map(o => o.value);
+  const isKnown = knownValues.includes(canonUnit);
+  const otherVal = (!isKnown && rawUnit) ? esc(rawUnit) : '';
+  const showOther = (!isKnown && rawUnit) ? '' : 'none';
   row.innerHTML = `
     <input type="text" placeholder="Ingredient" value="${ing ? esc(ing.name) : ''}" id="ring-name-${id}">
-    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ring-qty-${id}">
-    <input type="text" placeholder="Unit"       value="${ing ? esc(ing.unit) : ''}" id="ring-unit-${id}">
+    <input type="text" placeholder="Qty"        value="${ing ? esc(ing.qty)  : ''}" id="ring-qty-${id}" style="max-width:75px">
+    <div style="display:flex;flex-direction:column;gap:3px">
+      <select id="ring-unit-${id}" style="margin:0;font-size:0.82rem;padding:7px 8px">${buildUnitSelectHTML(rawUnit)}</select>
+      <input type="text" id="ring-unit-other-${id}" placeholder="Type unit…" style="display:${showOther};font-size:0.82rem;padding:6px 8px;margin:0" value="${otherVal}">
+    </div>
     <button class="icon-btn" onclick="document.getElementById('ring-row-${id}').remove()">×</button>`;
   document.getElementById('rec-ingredients-container').appendChild(row);
+  wireUnitSelect(`ring-unit-${id}`, `ring-unit-other-${id}`);
 }
 function saveRecipe() {
   const name = document.getElementById('rec-name').value.trim();
@@ -5361,6 +5520,7 @@ const UNIT_CONVERSIONS = {
   'fl. oz':   { factor: 29.57,  type: 'volume', base: 'ml' },
   'cup':      { factor: 240,    type: 'volume', base: 'ml' },
   'cups':     { factor: 240,    type: 'volume', base: 'ml' },
+  'cup(s)':   { factor: 240,    type: 'volume', base: 'ml' },
   'tbsp':     { factor: 15,     type: 'volume', base: 'ml' },
   'tablespoon':{ factor: 15,    type: 'volume', base: 'ml' },
   'tablespoons':{ factor: 15,   type: 'volume', base: 'ml' },
@@ -5519,9 +5679,10 @@ function generateShoppingList() {
   if (!all.length) { alert('No ingredients found. Add some meals with ingredients first.'); return; }
 
   // 2. Consolidate by ingredient name — handling cross-unit addition (e.g. 500g + 1kg = 1.5kg)
+  // Use normalised name as key so "onion" and "onions" merge together
   const groups = {};
   all.forEach(ing => {
-    const key = ing.name.toLowerCase().trim();
+    const key = normalizeIngName(ing.name);
     if (!groups[key]) groups[key] = [];
     groups[key].push(ing);
   });
@@ -5532,12 +5693,13 @@ function generateShoppingList() {
   });
 
   // 3. Subtract pantry stock — unit-aware (e.g. need 1kg, have 800g → need 200g)
+  // Use normalised names for pantry lookup
   const pantryMap = {};
-  (state.pantry||[]).forEach(p => { pantryMap[p.name.toLowerCase().trim()] = p; });
+  (state.pantry||[]).forEach(p => { pantryMap[normalizeIngName(p.name)] = p; });
 
   const afterPantry = [];
   Object.values(merged).forEach(ing => {
-    const pantryItem = pantryMap[ing.name.toLowerCase().trim()];
+    const pantryItem = pantryMap[normalizeIngName(ing.name)];
     if (pantryItem) {
       const result = subtractQuantities(ing.qty, ing.unit, pantryItem.qty, pantryItem.unit);
       if (result) {
@@ -5804,7 +5966,15 @@ function openAddPantryModal() {
   document.getElementById('pantry-modal-title').textContent = 'Add Pantry Item';
   document.getElementById('pantry-item-name').value = '';
   document.getElementById('pantry-item-qty').value  = '';
-  document.getElementById('pantry-item-unit').value = '';
+  // Reset unit select
+  const unitSel = document.getElementById('pantry-item-unit');
+  if (unitSel) {
+    unitSel.innerHTML = buildUnitSelectHTML('');
+    unitSel.value = '';
+    wireUnitSelect('pantry-item-unit', 'pantry-item-unit-other');
+  }
+  const unitOther = document.getElementById('pantry-item-unit-other');
+  if (unitOther) { unitOther.value = ''; unitOther.style.display = 'none'; }
   setPantryCategory('Other');
   document.getElementById('ai-cat-suggest-status').textContent = '';
   document.getElementById('pantry-modal').classList.add('open');
@@ -5820,7 +5990,13 @@ function openEditPantryModal(idx) {
   document.getElementById('pantry-modal-title').textContent = 'Edit Pantry Item';
   document.getElementById('pantry-item-name').value = item.name;
   document.getElementById('pantry-item-qty').value  = item.qty  || '';
-  document.getElementById('pantry-item-unit').value = item.unit || '';
+  // Set unit select
+  const unitSel = document.getElementById('pantry-item-unit');
+  if (unitSel) {
+    unitSel.innerHTML = buildUnitSelectHTML(item.unit || '');
+    wireUnitSelect('pantry-item-unit', 'pantry-item-unit-other');
+    setUnitSelect('pantry-item-unit', 'pantry-item-unit-other', item.unit || '');
+  }
   setPantryCategory(item.pantry_category || 'Other');
   document.getElementById('ai-cat-suggest-status').textContent = '';
   document.getElementById('pantry-modal').classList.add('open');
@@ -5859,17 +6035,30 @@ Reply with only the category name.`
 async function savePantryItem() {
   const name = document.getElementById('pantry-item-name').value.trim();
   if (!name) { alert('Please enter an item name.'); return; }
-  const qty              = document.getElementById('pantry-item-qty').value.trim();
-  const unit             = document.getElementById('pantry-item-unit').value.trim();
-  const pantry_category  = document.getElementById('pantry-item-category').value;
+  const qty             = document.getElementById('pantry-item-qty').value.trim();
+  const unit            = getUnitValue('pantry-item-unit', 'pantry-item-unit-other');
+  const pantry_category = document.getElementById('pantry-item-category').value;
   const date = new Date().toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   if (editingPantryIdx !== null) {
     const item = state.pantry[editingPantryIdx];
     state.pantry[editingPantryIdx] = { ...item, name, qty, unit, pantry_category };
     await apiFetch(`/api/pantry/${item.id}`, { method:'PUT', body: JSON.stringify({ name, qty, unit, pantry_category }) });
   } else {
-    await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({ name, qty, unit, addedDate: date, pantry_category }) });
-    state.pantry = await apiFetch('/api/pantry');
+    // Check for existing item with same normalised name — consolidate if found
+    const normNew = normalizeIngName(name);
+    const existing = state.pantry.find(p => normalizeIngName(p.name) === normNew);
+    if (existing) {
+      // Try to combine quantities
+      const combined = combineQuantities(existing.qty, existing.unit, qty, unit);
+      const newQty  = combined ? combined.qty  : existing.qty;
+      const newUnit = combined ? combined.unit : existing.unit;
+      state.pantry[state.pantry.indexOf(existing)] = { ...existing, qty: newQty, unit: newUnit, pantry_category };
+      await apiFetch(`/api/pantry/${existing.id}`, { method:'PUT', body: JSON.stringify({ name: existing.name, qty: newQty, unit: newUnit, pantry_category }) });
+      showToast(`✓ Added to existing "${existing.name}" — now ${newQty}${newUnit ? ' '+newUnit : ''}`);
+    } else {
+      await apiFetch('/api/pantry', { method:'POST', body: JSON.stringify({ name, qty, unit, addedDate: date, pantry_category }) });
+      state.pantry = await apiFetch('/api/pantry');
+    }
   }
   closeModal('pantry-modal');
   renderPantry();
@@ -5898,15 +6087,15 @@ function openCookedModal(dayIndex) {
   if (!meal) return;
   cookedDayIndex = dayIndex;
 
-  // Build pantry lookup by name (lowercase)
+  // Build pantry lookup by name (normalised)
   const pantryMap = {};
-  (state.pantry || []).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+  (state.pantry || []).forEach(p => { pantryMap[normalizeIngName(p.name)] = p; });
 
   const ings = meal.ingredients || [];
   document.getElementById('cooked-modal-title').textContent = `✓ Cooked: ${meal.name}`;
 
   // Summary line
-  const inPantryCount = ings.filter(i => pantryMap[i.name.toLowerCase()]).length;
+  const inPantryCount = ings.filter(i => pantryMap[normalizeIngName(i.name)]).length;
   document.getElementById('cooked-summary').innerHTML =
     `<strong>${meal.name}</strong> uses <strong>${ings.length} ingredient${ings.length !== 1 ? 's' : ''}</strong>.` +
     (inPantryCount > 0
@@ -5916,7 +6105,7 @@ function openCookedModal(dayIndex) {
   // Build ingredient rows
   const list = document.getElementById('cooked-ingredient-list');
   list.innerHTML = ings.map((ing, i) => {
-    const pantryItem = pantryMap[ing.name.toLowerCase()];
+    const pantryItem = pantryMap[normalizeIngName(ing.name)];
     const inPantry   = !!pantryItem;
     const pantryQty  = inPantry && pantryItem.qty ? ` (have ${pantryItem.qty}${pantryItem.unit ? ' '+pantryItem.unit : ''})` : '';
     return `<div class="cooked-ingredient-row ${inPantry ? 'in-pantry' : ''}" id="ci-row-${i}">
@@ -5952,7 +6141,7 @@ async function confirmCooked() {
   if (!meal) return;
 
   const pantryMap = {};
-  (state.pantry || []).forEach(p => { pantryMap[p.name.toLowerCase()] = p; });
+  (state.pantry || []).forEach(p => { pantryMap[normalizeIngName(p.name)] = p; });
 
   const ings = meal.ingredients || [];
   const updates = []; // [{pantryItem, deductQty, deductUnit}]
@@ -5964,7 +6153,7 @@ async function confirmCooked() {
 
     const usedQtyRaw = document.getElementById(`ci-qty-${i}`)?.value?.trim();
     const usedQty    = parseFloat(usedQtyRaw);
-    const pantryItem = pantryMap[ing.name.toLowerCase()];
+    const pantryItem = pantryMap[normalizeIngName(ing.name)];
 
     if (pantryItem) {
       updates.push({ pantryItem, usedQty: isNaN(usedQty) ? null : usedQty, unit: ing.unit || '' });
@@ -6144,7 +6333,7 @@ Return JSON with exactly these keys:
   "steps": "1. Step one\\n2. Step two\\n3. Step three"
 }
 cookTime is total cook time in minutes (integer). onePot is true if the whole dish can be made in one pan/pot/tray. calories is estimated kcal per serving (integer).
-Include 6-14 ingredients with UK measurements. 4-8 clear steps.`
+Include 6-14 ingredients. For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), slice(s), cloves, sprigs, sticks, handful, bunch, or leave unit blank for single items. 4-8 clear steps.`
     );
     const r = safeParseJSON(raw);
     if (!r.name) throw new Error('AI did not return a valid recipe');
@@ -6487,7 +6676,8 @@ async function aiGenerateRecipe() {
       `Generate a complete recipe for: "${name}"
 Return JSON with exactly these keys:
 {"category":"Pasta|Meat|Fish|Vegetarian|Curry|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","cookTime":30,"onePot":false,"calories":550,"ingredients":[{"name":"","qty":"","unit":""}],"steps":"1. ...\n2. ..."}
-cookTime is total minutes (integer). onePot true if one pan/pot/tray. calories is estimated kcal per serving (integer).`
+cookTime is total minutes (integer). onePot true if one pan/pot/tray. calories is estimated kcal per serving (integer).
+For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), slice(s), cloves, sprigs, sticks, handful, bunch, or leave unit blank for single items.`
     );
     const r = safeParseJSON(raw);
     if (r.category) {
