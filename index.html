@@ -142,7 +142,7 @@
   input:focus, textarea:focus, select:focus { border-color:var(--accent); }
   textarea { resize:vertical; min-height:75px; }
   select option { background:var(--surface2); }
-  .ingredient-row { display:grid; grid-template-columns:1fr 75px 110px auto; gap:7px; margin-bottom:7px; align-items:start; }
+  .ingredient-row { display:grid; grid-template-columns:1fr 75px 110px 65px auto; gap:7px; margin-bottom:7px; align-items:start; }
   .ingredient-row input { margin:0; }
   .add-ingredient-btn {
     background:none; border:1px dashed var(--border); color:var(--text-muted);
@@ -391,6 +391,31 @@
     font-size:0.72rem; padding:3px 9px; border-radius:10px;
     color:#2e7d5e; background:#2e7d5e10; border:1px solid #2e7d5e33; white-space:nowrap;
   }
+  /* calorie breakdown (mirrors cost breakdown) */
+  .cal-breakdown {
+    background:var(--surface2); border:1px solid var(--border); border-radius:10px;
+    padding:12px 14px; margin-top:14px;
+  }
+  .cal-breakdown-title {
+    font-size:0.72rem; text-transform:uppercase; letter-spacing:0.1em;
+    color:var(--text-muted); margin-bottom:10px;
+  }
+  .cal-ing-row {
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:0.82rem; padding:5px 0;
+    border-bottom:1px solid var(--border);
+  }
+  .cal-ing-row:last-child { border-bottom:none; }
+  .cal-ing-name { color:var(--text-soft); flex:1; }
+  .cal-ing-val { color:#a0522d; font-weight:500; font-size:0.82rem; white-space:nowrap; margin-left:10px; }
+  .cal-total-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:10px 0 0; margin-top:6px; font-size:0.9rem; font-weight:600;
+  }
+  .cal-total-label { color:var(--text-soft); }
+  .cal-total-val { color:#a0522d; font-size:1rem; }
+  .cal-per-portion { font-size:0.78rem; color:var(--text-muted); }
+
   .cost-breakdown {
     background:var(--surface2); border:1px solid var(--border); border-radius:10px;
     padding:12px 14px; margin-top:14px;
@@ -476,7 +501,7 @@
         <button class="ai-btn-secondary" onclick="aiUpdateAllCalories()" id="ai-calories-btn">🔥 AI Update Calories</button>
         <button class="ai-btn-secondary" onclick="aiUpdateAllCosts()" id="ai-costs-btn">💷 AI Update Costs</button>
         <button class="ai-btn-secondary" onclick="openAiRecipeModal()">✨ AI Generate Recipe</button>
-        <button class="btn-secondary" onclick="openUrlImportModal()">✨ AI Recipe Search</button>
+        <button class="btn-secondary" onclick="openUrlImportModal()">🔗 Import from URL</button>
         <button class="btn-primary" onclick="openRecipeModal(null)">+ New Recipe</button>
       </div>
     </div>
@@ -666,8 +691,9 @@
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group">
-        <label>Calories per serving (kcal)</label>
-        <input type="number" id="rec-calories" placeholder="e.g. 550" min="0">
+        <label>Calories per serving <span style="font-size:0.7rem;color:var(--text-muted)">(auto-totalled from ingredients)</span></label>
+        <div id="rec-calories-display" style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 13px;font-size:0.93rem;color:var(--text-muted);font-family:'DM Sans',sans-serif">—</div>
+        <input type="hidden" id="rec-calories">
       </div>
     </div>
     <div class="form-group" style="display:flex;align-items:center;gap:10px;padding-top:4px">
@@ -680,6 +706,13 @@
     </div>
     <div class="form-group">
       <label>Ingredients</label>
+      <div style="display:grid;grid-template-columns:1fr 75px 110px 65px auto;gap:7px;margin-bottom:4px;padding:0 2px">
+        <span style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Name</span>
+        <span style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Qty</span>
+        <span style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">Unit</span>
+        <span style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em">kcal</span>
+        <span></span>
+      </div>
       <div id="rec-ingredients-container"></div>
       <button class="add-ingredient-btn" onclick="addRecipeIngRow()">+ Add Ingredient</button>
     </div>
@@ -761,20 +794,20 @@
   </div>
 </div>
 
-<!-- MODAL: AI Recipe Search (replaces URL import) -->
+<!-- MODAL: Import Recipe from URL -->
 <div class="modal-overlay" id="url-import-modal">
   <div class="modal wide">
-    <h2>✨ AI Recipe Search</h2>
-    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px">Type a recipe name or describe what you want — the AI will generate it from its knowledge of cookbooks, food blogs and recipe sites.</p>
+    <h2>🔗 Import Recipe from URL</h2>
+    <p style="font-size:0.83rem;color:var(--text-muted);margin-bottom:18px">Paste a link to any recipe page — AI will extract the recipe even from busy sites with lots of extra text.</p>
     <div class="form-group">
-      <label>Recipe name or description</label>
-      <input type="text" id="url-import-input" placeholder="e.g. "Jamie Oliver chicken tikka" or "Ottolenghi roasted aubergine" or "quick prawn pasta"">
+      <label>Recipe URL</label>
+      <input type="url" id="url-import-input" placeholder="https://www.bbcgoodfood.com/recipes/chicken-tikka-masala" autocomplete="off">
     </div>
     <div id="url-import-status" style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;display:none;min-height:20px"></div>
     <div id="url-import-error" style="color:var(--danger);font-size:0.82rem;margin-bottom:8px;display:none"></div>
     <div class="modal-actions">
       <button class="btn-secondary" onclick="closeModal('url-import-modal')">Cancel</button>
-      <button class="ai-btn" onclick="runUrlImport()" id="url-import-btn" style="font-size:0.88rem;padding:10px 22px">✨ Find Recipe</button>
+      <button class="ai-btn" onclick="runUrlImport()" id="url-import-btn" style="font-size:0.88rem;padding:10px 22px">🔗 Import Recipe</button>
     </div>
   </div>
 </div>
@@ -4810,11 +4843,18 @@ function collectIngredients(prefix) {
       } else if (selEl) {
         unit = selEl.value.trim();
       }
-      ings.push({
+      const ingObj = {
         name: n.value.trim(),
         qty:  (document.getElementById(`${prefix}-qty-${id}`)?.value  || '').trim(),
         unit,
-      });
+      };
+      // Collect calories if present (ring prefix = recipe ingredient rows)
+      const calEl = document.getElementById(`${prefix}-cal-${id}`);
+      if (calEl) {
+        const calVal = parseFloat(calEl.value);
+        if (!isNaN(calVal) && calVal > 0) ingObj.calories = calVal;
+      }
+      ings.push(ingObj);
     }
   });
   return ings;
@@ -5170,13 +5210,16 @@ function renderRecipes(recipesOrSearch) {
     const cookTime  = estimateCookTime(r);
     const inPantry  = canMakeFromPantry(r);
     const totalCost = calcTotalCost(r);
+    const totalCals = calcTotalCalories(r);
     const serves    = parseInt(r.serves) || 4;
     const isFav     = r.favourite === true || r.favourite === 1;
+    // Use bottom-up calories if available, else legacy r.calories
+    const displayCals = totalCals > 0 ? Math.round(totalCals / serves) : r.calories;
     const tags = [];
     if (cookTime) tags.push(`<span class="cook-time-tag">⏱ ${cookTime < 60 ? cookTime+'m' : Math.round(cookTime/60)+'h'}</span>`);
     if (r.onePot) tags.push(`<span class="one-pot-tag">🥘 1-pot</span>`);
     if (inPantry) tags.push(`<span class="pantry-match-tag">✓ Can make now</span>`);
-    if (r.calories) tags.push(`<span class="cook-time-tag calorie-tag">🔥 ${r.calories} kcal/portion</span>`);
+    if (displayCals) tags.push(`<span class="cook-time-tag calorie-tag">🔥 ${displayCals} kcal/portion</span>`);
     if (totalCost) tags.push(`<span class="cook-time-tag cost-tag">💷 £${(totalCost/serves).toFixed(2)}/portion</span>`);
     if (r.country) tags.push(`<span class="cook-time-tag" style="color:#5c4433">${countryFlag(r.country)} ${countryAdjective(r.country)}</span>`);
     return `
@@ -5205,14 +5248,39 @@ function viewRecipe(id) {
   const r = state.recipes.find(x => x.id === id);
   if (!r) return;
   const steps = (r.steps||'').split('\n').filter(s => s.trim());
-  const serves = parseInt(r.serves) || 4;
+  const serves    = parseInt(r.serves) || 4;
   const totalCost = calcTotalCost(r);
-  const hasCosts = (r.ingredients||[]).some(i => i.cost);
+  const totalCals = calcTotalCalories(r);
+  const hasCosts  = (r.ingredients||[]).some(i => i.cost);
+  const hasCals   = (r.ingredients||[]).some(i => i.calories);
+
+  // Build calorie breakdown table (bottom-up)
+  let calSection = '';
+  if (hasCals) {
+    const calRows = (r.ingredients||[]).map(i =>
+      `<div class="cal-ing-row">
+        <span class="cal-ing-name">${i.name}${i.qty ? ` — ${i.qty} ${i.unit||''}` : ''}</span>
+        <span class="cal-ing-val">${i.calories ? Math.round(Number(i.calories))+' kcal' : '—'}</span>
+      </div>`
+    ).join('');
+    calSection = `
+      <div class="cal-breakdown">
+        <div class="cal-breakdown-title">🔥 Calorie Breakdown</div>
+        ${calRows}
+        <div class="cal-total-row">
+          <span class="cal-total-label">Total calories</span>
+          <span class="cal-total-val">${Math.round(totalCals)} kcal</span>
+        </div>
+        <div style="text-align:right;margin-top:4px">
+          <span class="cal-per-portion">≈ ${Math.round(totalCals/serves)} kcal per portion</span>
+        </div>
+      </div>`;
+  }
 
   // Build cost breakdown table
   let costSection = '';
   if (hasCosts) {
-    const rows = (r.ingredients||[]).map(i =>
+    const costRows = (r.ingredients||[]).map(i =>
       `<div class="cost-ing-row">
         <span class="cost-ing-name">${i.name}${i.qty ? ` — ${i.qty} ${i.unit||''}` : ''}</span>
         <span class="cost-ing-price">${i.cost ? '£'+Number(i.cost).toFixed(2) : '—'}</span>
@@ -5223,7 +5291,7 @@ function viewRecipe(id) {
         <div class="cost-breakdown-title">
           <span>💷 Ingredient Costs <span style="font-size:0.65rem;color:var(--border)">(Sainsbury's approx.)</span></span>
         </div>
-        ${rows}
+        ${costRows}
         <div class="cost-total-row">
           <span class="cost-total-label">Total recipe cost</span>
           <span class="cost-total-val">£${totalCost.toFixed(2)}</span>
@@ -5233,6 +5301,9 @@ function viewRecipe(id) {
         </div>
       </div>`;
   }
+
+  // Use bottom-up calorie total if available, otherwise fall back to recipe.calories
+  const displayCals = hasCals ? Math.round(totalCals / serves) : r.calories;
 
   document.getElementById('recipe-detail-content').innerHTML = `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">
@@ -5244,14 +5315,15 @@ function viewRecipe(id) {
       <span class="recipe-tag">Serves ${r.serves}</span>
       ${r.country ? `<span class="recipe-tag">${countryFlag(r.country)} ${countryAdjective(r.country)}</span>` : ''}
       ${r.cookTime ? `<span class="cook-time-tag" style="display:inline-block;border-radius:20px;font-size:0.65rem;padding:3px 8px">⏱ ${r.cookTime}m</span>` : ''}
-      ${r.calories ? `<span class="calorie-pill">🔥 ${r.calories} kcal/portion</span>` : ''}
+      ${displayCals ? `<span class="calorie-pill">🔥 ${displayCals} kcal/portion</span>` : ''}
       ${totalCost ? `<span class="cost-pill">💷 £${(totalCost/serves).toFixed(2)}/portion</span>` : ''}
     </div>
     ${r.desc ? `<p style="color:var(--text-muted);font-size:0.87rem;margin-bottom:18px;line-height:1.6">${r.desc}</p>` : ''}
     <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px">Ingredients</div>
-    <div class="ing-chips" style="margin-bottom:${hasCosts ? '10px' : '22px'}">
-      ${(r.ingredients||[]).map(i => `<span class="ing-chip">${i.name}${i.qty ? ' — '+i.qty+' '+(i.unit||'') : ''}${i.cost ? ' <span style="color:#7dd3a8;font-size:0.75em">£'+Number(i.cost).toFixed(2)+'</span>' : ''}</span>`).join('')}
+    <div class="ing-chips" style="margin-bottom:${(hasCosts||hasCals) ? '10px' : '22px'}">
+      ${(r.ingredients||[]).map(i => `<span class="ing-chip">${i.name}${i.qty ? ' — '+i.qty+' '+(i.unit||'') : ''}${i.calories ? ' <span style="color:#c97a3a;font-size:0.75em">'+Math.round(Number(i.calories))+' kcal</span>' : ''}${i.cost ? ' <span style="color:#7dd3a8;font-size:0.75em">£'+Number(i.cost).toFixed(2)+'</span>' : ''}</span>`).join('')}
     </div>
+    ${calSection}
     ${costSection}
     ${steps.length ? `
       <div style="font-size:0.73rem;text-transform:uppercase;letter-spacing:0.1em;color:var(--text-muted);margin-bottom:8px;margin-top:18px">Method</div>
@@ -5275,7 +5347,6 @@ function openRecipeModal(id) {
   document.getElementById('rec-desc').value     = r ? (r.desc||'') : '';
   document.getElementById('rec-steps').value    = r ? (r.steps||'') : '';
   document.getElementById('rec-cooktime').value = r ? (r.cookTime||'') : '';
-  document.getElementById('rec-calories').value = r ? (r.calories||'') : '';
   document.getElementById('rec-onepot').checked = r ? !!(r.onePot) : false;
   const container = document.getElementById('rec-ingredients-container');
   container.innerHTML = '';
@@ -5284,6 +5355,7 @@ function openRecipeModal(id) {
     r.ingredients.forEach(ing => addRecipeIngRow(ing));
   else
     addRecipeIngRow();
+  updateRecipeCaloriesDisplay();
   document.getElementById('recipe-modal').classList.add('open');
   setTimeout(() => document.getElementById('rec-name').focus(), 50);
 }
@@ -5305,7 +5377,8 @@ function addRecipeIngRow(ing = null) {
       <select id="ring-unit-${id}" style="margin:0;font-size:0.82rem;padding:7px 8px">${buildUnitSelectHTML(rawUnit)}</select>
       <input type="text" id="ring-unit-other-${id}" placeholder="Type unit…" style="display:${showOther};font-size:0.82rem;padding:6px 8px;margin:0" value="${otherVal}">
     </div>
-    <button class="icon-btn" onclick="document.getElementById('ring-row-${id}').remove()">×</button>`;
+    <input type="number" placeholder="kcal" value="${ing && ing.calories ? ing.calories : ''}" id="ring-cal-${id}" min="0" style="max-width:65px;font-size:0.82rem;padding:7px 8px" oninput="updateRecipeCaloriesDisplay()" title="Calories for this ingredient">
+    <button class="icon-btn" onclick="document.getElementById('ring-row-${id}').remove();updateRecipeCaloriesDisplay()">×</button>`;
   document.getElementById('rec-ingredients-container').appendChild(row);
   wireUnitSelect(`ring-unit-${id}`, `ring-unit-other-${id}`);
 }
@@ -5313,18 +5386,24 @@ function saveRecipe() {
   const name = document.getElementById('rec-name').value.trim();
   if (!name) { alert('Please enter a recipe name.'); return; }
   const cookTimeVal = document.getElementById('rec-cooktime').value.trim();
-  const caloriesVal = document.getElementById('rec-calories').value.trim();
   // Collect ingredients from form, but preserve any existing cost data
   const existingRecipe = editingRecipeId ? state.recipes.find(r => r.id === editingRecipeId) : null;
   const formIngredients = collectIngredients('ring');
-  // Try to merge costs from existing ingredients by name match
+  // Try to merge costs AND calories from existing ingredients by name match
   const mergedIngredients = formIngredients.map(ing => {
     if (!existingRecipe) return ing;
     const existing = (existingRecipe.ingredients||[]).find(e =>
       e.name.toLowerCase() === ing.name.toLowerCase()
     );
-    return existing && existing.cost !== undefined ? { ...ing, cost: existing.cost } : ing;
+    const merged = { ...ing };
+    if (existing && existing.cost !== undefined) merged.cost = existing.cost;
+    // calories come from the form itself (ring-cal-N), already collected in formIngredients
+    return merged;
   });
+  // Compute total calories from ingredient kcal values (bottom-up)
+  const ingCalTotal = mergedIngredients.reduce((s, i) => s + (i.calories ? Number(i.calories) : 0), 0);
+  const serves = parseInt(document.getElementById('rec-serves').value.trim()) || 4;
+  const derivedCaloriesPerServing = ingCalTotal > 0 ? Math.round(ingCalTotal / serves) : null;
   const recipe = {
     id:          editingRecipeId || 'r_' + Date.now(),
     name,
@@ -5335,7 +5414,7 @@ function saveRecipe() {
     steps:       document.getElementById('rec-steps').value.trim(),
     ingredients: mergedIngredients,
     cookTime:    cookTimeVal ? Number(cookTimeVal) : null,
-    calories:    caloriesVal ? Number(caloriesVal) : null,
+    calories:    derivedCaloriesPerServing,
     onePot:      document.getElementById('rec-onepot').checked,
     favourite:   existingRecipe ? (existingRecipe.favourite || false) : false,
   };
@@ -6328,15 +6407,18 @@ Return JSON with exactly these keys:
   "desc": "One enticing sentence description",
   "cookTime": 30,
   "onePot": false,
-  "calories": 550,
-  "ingredients": [{"name":"","qty":"","unit":""}],
+  "ingredients": [{"name":"","qty":"","unit":"","calories":120}],
   "steps": "1. Step one\\n2. Step two\\n3. Step three"
 }
-cookTime is total cook time in minutes (integer). onePot is true if the whole dish can be made in one pan/pot/tray. calories is estimated kcal per serving (integer).
+cookTime is total cook time in minutes (integer). onePot is true if the whole dish can be made in one pan/pot/tray.
+Each ingredient's "calories" is the total kcal contribution of that quantity (not per 100g).
 Include 6-14 ingredients. For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), slice(s), cloves, sprigs, sticks, handful, bunch, or leave unit blank for single items. 4-8 clear steps.`
     );
     const r = safeParseJSON(raw);
     if (!r.name) throw new Error('AI did not return a valid recipe');
+    // Compute calories from bottom-up ingredient totals
+    const serves = parseInt(r.serves) || 4;
+    const ingCalTotal = (r.ingredients || []).reduce((s, i) => s + (i.calories ? Number(i.calories) : 0), 0);
     const recipe = {
       id: 'r_' + Date.now(),
       name: r.name,
@@ -6346,7 +6428,7 @@ Include 6-14 ingredients. For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), t
       steps: r.steps || '',
       ingredients: r.ingredients || [],
       cookTime: r.cookTime || null,
-      calories: r.calories || null,
+      calories: ingCalTotal > 0 ? Math.round(ingCalTotal / serves) : null,
       onePot: !!r.onePot,
     };
     state.recipes.push(recipe);
@@ -6378,23 +6460,32 @@ function openUrlImportModal() {
 }
 
 async function runUrlImport() {
-  const query = document.getElementById('url-import-input').value.trim();
-  if (!query) { showUrlImportError('Please describe the recipe you want.'); return; }
+  const urlInput = document.getElementById('url-import-input').value.trim();
+  if (!urlInput) { showUrlImportError('Please enter a URL.'); return; }
+  // Basic URL validation
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(urlInput.startsWith('http') ? urlInput : 'https://' + urlInput);
+  } catch(e) {
+    showUrlImportError('Please enter a valid URL (e.g. https://www.bbcgoodfood.com/recipes/…)');
+    return;
+  }
   const btn = document.getElementById('url-import-btn');
   const statusEl = document.getElementById('url-import-status');
   btn.disabled = true;
-  btn.innerHTML = '<span class="spinner"></span> Generating…';
+  btn.innerHTML = '<span class="spinner"></span> Fetching…';
   statusEl.style.display = 'block';
-  statusEl.textContent = '🧑‍🍳 Finding and building your recipe…';
+  statusEl.textContent = '🌐 Fetching page…';
   document.getElementById('url-import-error').style.display = 'none';
   try {
-    const resp = await apiFetch('/api/ai-recipe-search', {
+    statusEl.textContent = '🧑‍🍳 Extracting recipe with AI…';
+    const resp = await apiFetch('/api/url-import', {
       method: 'POST',
-      body: JSON.stringify({ query }),
+      body: JSON.stringify({ url: parsedUrl.href }),
     });
     if (!resp.response) throw new Error('No response from AI.');
     const r = safeParseJSON(resp.response);
-    if (r.error || !r.name) throw new Error(r.error || 'Could not generate a recipe for that — try rephrasing.');
+    if (r.error || !r.name) throw new Error(r.error || 'Could not find a recipe at that URL — try a different page.');
     const recipe = {
       id: 'r_' + Date.now(),
       name: r.name,
@@ -6414,10 +6505,10 @@ async function runUrlImport() {
     updateBadges();
     setTimeout(() => viewRecipe(recipe.id), 200);
   } catch(e) {
-    showUrlImportError(e.message || 'Search failed — try a different description.');
+    showUrlImportError(e.message || 'Import failed — the site may block access. Try copying the recipe text instead.');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = '✨ Find Recipe';
+    btn.innerHTML = '🔗 Import Recipe';
     statusEl.style.display = 'none';
   }
 }
@@ -6527,6 +6618,35 @@ function calcTotalCost(recipe) {
   return ings.reduce((sum, i) => sum + (i.cost ? Number(i.cost) : 0), 0);
 }
 
+// ── Calorie helpers ───────────────────────────────────────────────────────────
+function calcTotalCalories(recipe) {
+  const ings = recipe.ingredients || [];
+  if (!ings.some(i => i.calories)) return 0;
+  return ings.reduce((sum, i) => sum + (i.calories ? Number(i.calories) : 0), 0);
+}
+
+function updateRecipeCaloriesDisplay() {
+  const container = document.getElementById('rec-ingredients-container');
+  if (!container) return;
+  let total = 0;
+  let hasAny = false;
+  container.querySelectorAll('[id^="ring-row-"]').forEach(row => {
+    const id = row.id.replace('ring-row-', '');
+    const calEl = document.getElementById(`ring-cal-${id}`);
+    if (calEl) {
+      const v = parseFloat(calEl.value);
+      if (!isNaN(v) && v > 0) { total += v; hasAny = true; }
+    }
+  });
+  const display = document.getElementById('rec-calories-display');
+  const hidden  = document.getElementById('rec-calories');
+  if (display) {
+    display.textContent = hasAny ? `${Math.round(total)} kcal total (enter serves to get per-portion)` : '—';
+    display.style.color = hasAny ? 'var(--text)' : 'var(--text-muted)';
+  }
+  if (hidden) hidden.value = hasAny ? String(Math.round(total)) : '';
+}
+
 // ── AI Update All Costs ────────────────────────────────────────────────
 async function aiUpdateAllCosts() {
   if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
@@ -6620,48 +6740,93 @@ Recipes: ${JSON.stringify(recipeList)}`
 async function aiUpdateAllCalories() {
   if (!state.recipes.length) { alert('No recipes in your catalog.'); return; }
   const btn = document.getElementById('ai-calories-btn');
+
+  // Separate recipes with no ingredient calories from those that already have them
+  const uncalculated = state.recipes.filter(r => !calcTotalCalories(r));
+  const alreadyCalc  = state.recipes.filter(r => calcTotalCalories(r) > 0);
+
+  if (!uncalculated.length) {
+    // All already have calories — ask if they want to re-estimate all
+    if (!confirm(`All ${alreadyCalc.length} recipes already have calorie info. Would you like to re-estimate them all?`)) return;
+    await _runCalorieUpdate(state.recipes, btn);
+    return;
+  }
+
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner dark"></span> Estimating calories…';
+  await _runCalorieUpdate(uncalculated, btn, alreadyCalc.length);
+}
 
-  const BATCH = 5;
-  let updated = 0, skipped = 0;
+async function _runCalorieUpdate(recipes, btn, skippedCount = 0) {
+  btn.disabled = true;
+  const BATCH = 2;
+  let updated = 0, failed = 0;
 
-  for (let i = 0; i < state.recipes.length; i += BATCH) {
-    const batch = state.recipes.slice(i, i + BATCH);
-    const done = Math.min(i + BATCH, state.recipes.length);
-    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${state.recipes.length}…`;
+  for (let i = 0; i < recipes.length; i += BATCH) {
+    const batch = recipes.slice(i, i + BATCH);
+    const done = Math.min(i + BATCH, recipes.length);
+    btn.innerHTML = `<span class="spinner dark"></span> ${done}/${recipes.length}…`;
     try {
       const recipeList = batch.map(r => ({
         id: r.id, name: r.name, serves: r.serves || '4',
-        ingredients: (r.ingredients || []).map(i => `${i.qty||''} ${i.unit||''} ${i.name}`.trim()).join(', ')
+        ingredients: (r.ingredients || []).map(ing => ({ name: ing.name, qty: ing.qty || '', unit: ing.unit || '' }))
       }));
       const raw = await callClaude(
         'You are a nutritionist. Respond ONLY with valid JSON — no markdown, no explanation.',
-        `Estimate kcal per serving for each recipe. Return ONLY this JSON array, nothing else:
-[{"id":"...","calories":550}]
+        `Estimate the calories for each ingredient in each recipe.
+Return ONLY this JSON structure, nothing else:
+[{"id":"recipe_id","ingredients":[{"name":"ingredient name","calories":120}]}]
+calories is the total kcal contribution of that ingredient quantity as listed (not per 100g).
 Recipes: ${JSON.stringify(recipeList)}`
       );
       const results = safeParseJSON(raw);
-      if (!Array.isArray(results)) { skipped++; continue; }
+      if (!Array.isArray(results)) { failed++; continue; }
       const saves = [];
       results.forEach(res => {
-        if (!res.id || !res.calories) return;
+        if (!res.id || !Array.isArray(res.ingredients)) return;
         const recipe = state.recipes.find(r => r.id === res.id);
         if (!recipe) return;
-        recipe.calories = Number(res.calories);
+        res.ingredients.forEach(estimated => {
+          const cal = parseFloat(String(estimated.calories ?? '').replace(/[^\d.]/g, ''));
+          const ing = recipe.ingredients.find(i => i.name.toLowerCase() === estimated.name.toLowerCase());
+          if (ing && !isNaN(cal) && cal > 0) ing.calories = cal;
+        });
+        // Recompute recipe.calories from bottom-up total
+        const serves = parseInt(recipe.serves) || 4;
+        const ingCalTotal = recipe.ingredients.reduce((s, i) => s + (i.calories ? Number(i.calories) : 0), 0);
+        recipe.calories = ingCalTotal > 0 ? Math.round(ingCalTotal / serves) : recipe.calories;
         updated++;
         saves.push(apiFetch('/api/recipes', { method: 'POST', body: JSON.stringify(recipe) }));
       });
       await Promise.all(saves);
     } catch(e) {
       console.warn(`Calories batch ${i}–${done} skipped:`, e.message);
-      skipped++;
+      failed++;
     }
   }
+
   applyRecipeFilters();
   renderWeek();
-  btn.innerHTML = skipped ? `✓ ${updated} updated (${skipped} batches skipped)` : `✓ ${updated} recipes updated`;
-  setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔥 AI Update Calories'; }, 3000);
+
+  const msg = failed
+    ? `✓ ${updated} updated (${failed} batches failed)`
+    : `✓ ${updated} recipes updated`;
+
+  btn.innerHTML = msg;
+
+  if (skippedCount > 0) {
+    setTimeout(async () => {
+      if (confirm(`${updated} new recipes estimated! There are also ${skippedCount} recipes that already had calorie info. Would you like to re-estimate those too?`)) {
+        const alreadyCalc = state.recipes.filter(r => calcTotalCalories(r) > 0);
+        await _runCalorieUpdate(alreadyCalc, btn);
+      } else {
+        btn.disabled = false;
+        btn.innerHTML = '🔥 AI Update Calories';
+      }
+    }, 500);
+  } else {
+    setTimeout(() => { btn.disabled = false; btn.innerHTML = '🔥 AI Update Calories'; }, 3000);
+  }
 }
 
 async function aiGenerateRecipe() {
@@ -6675,8 +6840,9 @@ async function aiGenerateRecipe() {
       'You are a recipe assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
       `Generate a complete recipe for: "${name}"
 Return JSON with exactly these keys:
-{"category":"Pasta|Meat|Fish|Vegetarian|Curry|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","cookTime":30,"onePot":false,"calories":550,"ingredients":[{"name":"","qty":"","unit":""}],"steps":"1. ...\n2. ..."}
-cookTime is total minutes (integer). onePot true if one pan/pot/tray. calories is estimated kcal per serving (integer).
+{"category":"Pasta|Meat|Fish|Vegetarian|Curry|Soup|Salad|Asian|Other","serves":"4","desc":"one sentence","cookTime":30,"onePot":false,"ingredients":[{"name":"","qty":"","unit":"","calories":120}],"steps":"1. ...\n2. ..."}
+cookTime is total minutes (integer). onePot true if one pan/pot/tray.
+Each ingredient's "calories" is the total kcal contribution of that quantity (not per 100g).
 For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), slice(s), cloves, sprigs, sticks, handful, bunch, or leave unit blank for single items.`
     );
     const r = safeParseJSON(raw);
@@ -6688,12 +6854,12 @@ For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), sl
     if (r.desc)     document.getElementById('rec-desc').value     = r.desc;
     if (r.steps)    document.getElementById('rec-steps').value    = r.steps;
     if (r.cookTime) document.getElementById('rec-cooktime').value = r.cookTime;
-    if (r.calories) document.getElementById('rec-calories').value = r.calories;
     if (r.onePot !== undefined) document.getElementById('rec-onepot').checked = !!r.onePot;
     if (r.ingredients) {
       document.getElementById('rec-ingredients-container').innerHTML = '';
       recIngCount = 0;
       r.ingredients.forEach(ing => addRecipeIngRow(ing));
+      updateRecipeCaloriesDisplay();
     }
   } catch(e) {
     alert('Could not generate recipe: ' + e.message);
