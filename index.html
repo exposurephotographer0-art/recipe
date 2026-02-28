@@ -454,6 +454,16 @@
   .day-card.dragging { opacity:0.45; cursor:grabbing; }
   .day-card[draggable="true"] { cursor:grab; }
 
+  /* GUEST MODE */
+  .guest-hidden { display:none !important; }
+  .guest-badge {
+    display:inline-flex; align-items:center; gap:5px;
+    background:#7c5c3a18; border:1px solid #7c5c3a44;
+    color:#7c5c3a; font-size:0.7rem; font-weight:500;
+    letter-spacing:0.06em; text-transform:uppercase;
+    padding:3px 10px; border-radius:20px;
+  }
+
   /* PIN SCREEN */
   #pin-screen { display:none; }
   #pin-screen.show { display:flex !important; }
@@ -496,7 +506,10 @@
 <body>
 
 <header>
-  <div class="logo">& Dine</div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="logo">& Dine</div>
+    <span id="guest-badge" class="guest-badge" style="display:none">👁 View only</span>
+  </div>
   <nav>
     <button class="active" onclick="showView('planner')">Week</button>
     <button onclick="showView('recipes')">Recipes <span class="badge" id="rec-badge" style="display:none">0</span></button>
@@ -4731,7 +4744,8 @@ function normalizeIngName(name) {
 }
 
 // ════════ STATE ════════
-let state = { meals:{}, recipes:[], shoppingList:[], pantry:[] };
+let state = { meals:{}, recipes:[], shoppingList:[], pantry:[], role: 'admin' };
+const isGuest = () => state.role === 'guest';
 let editingDay = null, pickerDay = null;
 let ingredientCount = 0, recIngCount = 0;
 let editingRecipeId = null, editingPantryIdx = null;
@@ -4803,8 +4817,10 @@ async function submitPin() {
       body: JSON.stringify({ pin }),
     });
     if (resp.ok) {
-      const { token } = await resp.json();
+      const { token, role } = await resp.json();
       localStorage.setItem('dine_token', token);
+      localStorage.setItem('dine_role', role);
+      state.role = role;
       hidePinScreen();
       await loadAppData();
     } else {
@@ -4898,6 +4914,67 @@ async function loadAppData() {
   renderShopping();
   renderPantry();
   updateBadges();
+  applyGuestMode();
+}
+
+// ════════ GUEST MODE ════════
+function applyGuestMode() {
+  if (!isGuest()) {
+    document.getElementById('guest-badge').style.display = 'none';
+    return;
+  }
+
+  // Show the badge
+  document.getElementById('guest-badge').style.display = 'inline-flex';
+
+  // Hide all write buttons by adding guest-hidden class
+  const writeSelectors = [
+    '#ai-calories-btn',          // AI Update Calories
+    '#ai-costs-btn',             // AI Update Costs
+    'button[onclick="openAiRecipeModal()"]',
+    'button[onclick="openUrlImportModal()"]',
+    'button[onclick="openRecipeModal(null)"]',
+    'button[onclick="clearWeek()"]',
+    'button[onclick="generateShoppingList()"]',
+    '#ai-plan-btn',
+    'button[onclick="markAllDone()"]',
+    'button[onclick="shoppingBought()"]',
+    'button[onclick="aiCategorisePantry()"]',
+    'button[onclick="openAddPantryModal()"]',
+    'button[onclick="clearPantry()"]',
+  ];
+  writeSelectors.forEach(sel => {
+    document.querySelectorAll(sel).forEach(el => el.classList.add('guest-hidden'));
+  });
+
+  // Patch functions that write data to show a toast instead
+  const blocked = (name) => (...args) => showToast('👁 View only — sign in with the admin PIN to make changes');
+
+  window.saveRecipe           = blocked('saveRecipe');
+  window.deleteRecipe         = blocked('deleteRecipe');
+  window.saveMeal             = blocked('saveMeal');
+  window.clearWeek            = blocked('clearWeek');
+  window.generateShoppingList = blocked('generateShoppingList');
+  window.shoppingBought       = blocked('shoppingBought');
+  window.markAllDone          = blocked('markAllDone');
+  window.deleteShopItem       = blocked('deleteShopItem');
+  window.savePantryItem       = blocked('savePantryItem');
+  window.removePantryItem     = blocked('removePantryItem');
+  window.clearPantry          = blocked('clearPantry');
+  window.aiCategorisePantry   = blocked('aiCategorisePantry');
+  window.aiUpdateAllCalories  = blocked('aiUpdateAllCalories');
+  window.aiUpdateAllCosts     = blocked('aiUpdateAllCosts');
+  window.openAiRecipeModal    = blocked('openAiRecipeModal');
+  window.openUrlImportModal   = blocked('openUrlImportModal');
+  window.runAiWeekPlan        = blocked('runAiWeekPlan');
+  window.toggleFavourite      = blocked('toggleFavourite');
+  window.confirmCooked        = blocked('confirmCooked');
+  window.openPickerModal      = blocked('openPickerModal');
+  window.openMealModal        = blocked('openMealModal');
+  window.removeMeal           = blocked('removeMeal');
+  window.aiSuggestDay         = blocked('aiSuggestDay');
+  window.pickAiSuggestion     = blocked('pickAiSuggestion');
+  window.aiPlanWeek           = blocked('aiPlanWeek');
 }
 
 // ════════ INIT ════════
@@ -4923,6 +5000,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         headers: { 'X-Auth-Token': existingToken },
       });
       if (resp.ok) {
+        const { role } = await resp.json();
+        state.role = role || localStorage.getItem('dine_role') || 'admin';
+        localStorage.setItem('dine_role', state.role);
         await loadAppData();
         // Restore last tab from URL hash
         const validViews = ['planner','recipes','shopping','pantry'];
@@ -4932,6 +5012,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
     } catch(e) { /* fall through to PIN screen */ }
     localStorage.removeItem('dine_token');
+    localStorage.removeItem('dine_role');
   }
 
   // No valid token — show PIN screen
