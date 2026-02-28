@@ -454,6 +454,36 @@
   .day-card.dragging { opacity:0.45; cursor:grabbing; }
   .day-card[draggable="true"] { cursor:grab; }
 
+  /* PIN SCREEN */
+  #pin-screen { display:none; }
+  #pin-screen.show { display:flex !important; }
+  .pin-dot {
+    width:14px; height:14px; border-radius:50%;
+    background:var(--border); transition:background 0.15s;
+  }
+  .pin-dot.filled { background:var(--accent); }
+  .pin-key {
+    background:var(--surface2); border:1px solid var(--border);
+    color:var(--text); font-family:'DM Sans',sans-serif;
+    font-size:1.2rem; font-weight:500; padding:16px;
+    border-radius:10px; cursor:pointer; transition:all 0.12s;
+    user-select:none;
+  }
+  .pin-key:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .pin-key:active { transform:scale(0.93); }
+  .pin-key.pin-del { font-size:1rem; color:var(--text-muted); }
+  .pin-key.pin-del:hover { background:var(--surface2); color:var(--danger); border-color:var(--danger); }
+  .pin-dots-shake {
+    animation: pin-shake 0.35s ease;
+  }
+  @keyframes pin-shake {
+    0%,100% { transform:translateX(0); }
+    20% { transform:translateX(-8px); }
+    40% { transform:translateX(8px); }
+    60% { transform:translateX(-6px); }
+    80% { transform:translateX(6px); }
+  }
+
   @media(max-width:768px) {
     header { padding:14px 18px; }
     nav button { padding:6px 10px; font-size:0.72rem; }
@@ -4708,10 +4738,17 @@ let editingRecipeId = null, editingPantryIdx = null;
 
 // ════════ API LAYER ════════
 async function apiFetch(path, opts = {}) {
+  const token = localStorage.getItem('dine_token') || '';
   const resp = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'X-Auth-Token': token },
     ...opts,
   });
+  if (resp.status === 401) {
+    // Token invalid/expired — show PIN screen again
+    localStorage.removeItem('dine_token');
+    showPinScreen();
+    throw new Error('Session expired — please re-enter your PIN.');
+  }
   if (!resp.ok) {
     const body = await resp.text().catch(() => '');
     throw new Error(`Worker error ${resp.status} on ${path}: ${body}`);
@@ -4719,20 +4756,85 @@ async function apiFetch(path, opts = {}) {
   return resp.json();
 }
 
-// ════════ INIT ════════
-document.addEventListener('DOMContentLoaded', async () => {
-  // Wire up modal close-on-backdrop-click
-  document.querySelectorAll('.modal-overlay').forEach(el => {
-    el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+// ════════ PIN AUTH ════════
+let pinBuffer = '';
+const PIN_LENGTH = 4;
+
+function showPinScreen() {
+  pinBuffer = '';
+  updatePinDots();
+  document.getElementById('pin-error').style.display = 'none';
+  document.getElementById('pin-screen').classList.add('show');
+}
+
+function hidePinScreen() {
+  document.getElementById('pin-screen').classList.remove('show');
+}
+
+function updatePinDots() {
+  document.querySelectorAll('.pin-dot').forEach((dot, i) => {
+    dot.classList.toggle('filled', i < pinBuffer.length);
   });
+}
 
-  // Pre-populate pantry unit select
-  const pantryUnitSel = document.getElementById('pantry-item-unit');
-  if (pantryUnitSel) {
-    pantryUnitSel.innerHTML = buildUnitSelectHTML('');
-    wireUnitSelect('pantry-item-unit', 'pantry-item-unit-other');
+function pinPress(digit) {
+  if (pinBuffer.length >= PIN_LENGTH) return;
+  pinBuffer += digit;
+  updatePinDots();
+  if (pinBuffer.length === PIN_LENGTH) {
+    setTimeout(submitPin, 80); // tiny delay so last dot fills visually
   }
+}
 
+function pinBackspace() {
+  if (!pinBuffer.length) return;
+  pinBuffer = pinBuffer.slice(0, -1);
+  updatePinDots();
+}
+
+async function submitPin() {
+  const pin = pinBuffer;
+  pinBuffer = '';
+  updatePinDots();
+  try {
+    const resp = await fetch(API + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pin }),
+    });
+    if (resp.ok) {
+      const { token } = await resp.json();
+      localStorage.setItem('dine_token', token);
+      hidePinScreen();
+      await loadAppData();
+    } else {
+      // Wrong PIN
+      const dotsEl = document.getElementById('pin-dots');
+      // Flash dots red then shake
+      dotsEl.querySelectorAll('.pin-dot').forEach(d => { d.style.background = 'var(--danger)'; });
+      dotsEl.classList.add('pin-dots-shake');
+      document.getElementById('pin-error').style.display = 'block';
+      setTimeout(() => {
+        dotsEl.querySelectorAll('.pin-dot').forEach(d => { d.style.background = ''; });
+        dotsEl.classList.remove('pin-dots-shake');
+        updatePinDots();
+      }, 400);
+    }
+  } catch(e) {
+    document.getElementById('pin-error').textContent = 'Could not connect — check your internet.';
+    document.getElementById('pin-error').style.display = 'block';
+  }
+}
+
+// Support keyboard input on PIN screen
+document.addEventListener('keydown', e => {
+  const pinVisible = document.getElementById('pin-screen').classList.contains('show');
+  if (!pinVisible) return;
+  if (e.key >= '0' && e.key <= '9') pinPress(e.key);
+  if (e.key === 'Backspace') pinBackspace();
+});
+
+async function loadAppData() {
   showLoading(true);
   try {
     const [recipes, meals, pantry, shopping, deletedSeedIds] = await Promise.all([
@@ -4796,11 +4898,46 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderShopping();
   renderPantry();
   updateBadges();
+}
 
-  // Restore last tab from URL hash
-  const validViews = ['planner','recipes','shopping','pantry'];
-  const hash = location.hash.replace('#','');
-  if (validViews.includes(hash)) showView(hash);
+// ════════ INIT ════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // Wire up modal close-on-backdrop-click
+  document.querySelectorAll('.modal-overlay').forEach(el => {
+    el.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+  });
+
+  // Pre-populate pantry unit select
+  const pantryUnitSel = document.getElementById('pantry-item-unit');
+  if (pantryUnitSel) {
+    pantryUnitSel.innerHTML = buildUnitSelectHTML('');
+    wireUnitSelect('pantry-item-unit', 'pantry-item-unit-other');
+  }
+
+  // Check for existing valid token
+  const existingToken = localStorage.getItem('dine_token');
+  if (existingToken) {
+    // Verify the token is still valid with the worker
+    try {
+      const resp = await fetch(API + '/api/auth/verify', {
+        headers: { 'X-Auth-Token': existingToken },
+      });
+      if (resp.ok) {
+        await loadAppData();
+        // Restore last tab from URL hash
+        const validViews = ['planner','recipes','shopping','pantry'];
+        const hash = location.hash.replace('#','');
+        if (validViews.includes(hash)) showView(hash);
+        return;
+      }
+    } catch(e) { /* fall through to PIN screen */ }
+    localStorage.removeItem('dine_token');
+  }
+
+  // No valid token — show PIN screen
+  showPinScreen();
+
+  // Restore last tab from URL hash (will apply after login)
 });
 
 // ════════ UI HELPERS ════════
@@ -6869,6 +7006,41 @@ For units use ONLY: g, kg, ml, l, tsp, tbsp, cup(s), tin(s), jar(s), pack(s), sl
   }
 }
 </script>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:600;align-items:center;justify-content:center;flex-direction:column;">
+  <div style="width:100%;max-width:380px;padding:24px;">
+    <div style="text-align:center;margin-bottom:36px;">
+      <div style="font-family:'Playfair Display',serif;font-size:2rem;color:var(--accent);margin-bottom:6px;">& Dine</div>
+      <div style="font-size:0.85rem;color:var(--text-muted);">Enter your PIN to continue</div>
+    </div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(45,33,24,0.08);">
+      <!-- PIN dots display -->
+      <div id="pin-dots" style="display:flex;justify-content:center;gap:14px;margin-bottom:28px;">
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+        <div class="pin-dot"></div>
+      </div>
+      <!-- Numpad -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+        <button class="pin-key" onclick="pinPress('1')">1</button>
+        <button class="pin-key" onclick="pinPress('2')">2</button>
+        <button class="pin-key" onclick="pinPress('3')">3</button>
+        <button class="pin-key" onclick="pinPress('4')">4</button>
+        <button class="pin-key" onclick="pinPress('5')">5</button>
+        <button class="pin-key" onclick="pinPress('6')">6</button>
+        <button class="pin-key" onclick="pinPress('7')">7</button>
+        <button class="pin-key" onclick="pinPress('8')">8</button>
+        <button class="pin-key" onclick="pinPress('9')">9</button>
+        <div></div>
+        <button class="pin-key" onclick="pinPress('0')">0</button>
+        <button class="pin-key pin-del" onclick="pinBackspace()" title="Delete">⌫</button>
+      </div>
+      <div id="pin-error" style="text-align:center;color:var(--danger);font-size:0.82rem;margin-top:16px;min-height:20px;display:none;">Incorrect PIN — try again</div>
+    </div>
+  </div>
+</div>
 
 <div id="loading-overlay" style="display:none;position:fixed;inset:0;background:rgba(253,248,242,0.92);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:14px">
   <div class="spinner dark" style="width:32px;height:32px"></div>
