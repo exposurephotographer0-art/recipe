@@ -5654,7 +5654,7 @@ function viewRecipe(id) {
     costSection = `
       <div class="cost-breakdown">
         <div class="cost-breakdown-title">
-          <span>💷 Ingredient Costs <span style="font-size:0.65rem;color:var(--border)">(Sainsbury's approx.)</span></span>
+          <span>💷 Ingredient Costs <span style="font-size:0.65rem;color:var(--border)">(UK supermarket approx.)</span></span>
         </div>
         ${costRows}
         <div class="cost-total-row">
@@ -6231,6 +6231,48 @@ function renderShopping() {
   const pantryDeducted = state.shoppingList.filter(i => i.pantryNote).length;
   const fullyFromPantry = (state.shoppingList._pantrySkipped || 0);
   let html = '';
+
+  // Calculate estimated total shop cost from recipe ingredient costs
+  const estimatedTotal = (() => {
+    // Collect all meal recipe IDs from the planner
+    const mealRecipeIds = Object.values(state.meals || {})
+      .filter(m => m && m.recipeId)
+      .map(m => m.recipeId);
+    if (!mealRecipeIds.length) return 0;
+    let total = 0;
+    let hasAny = false;
+    mealRecipeIds.forEach(rid => {
+      const rec = state.recipes.find(r => r.id === rid);
+      if (!rec) return;
+      const tc = calcTotalCost(rec);
+      if (tc > 0) { total += tc; hasAny = true; }
+    });
+    return hasAny ? total : 0;
+  })();
+
+  if (estimatedTotal > 0) {
+    // Count unchecked items
+    const remaining = state.shoppingList.filter(i => !i.checked).length;
+    const checkedCost = (() => {
+      // Rough pro-rata: checked items proportion of total
+      const total2 = state.shoppingList.length;
+      const checked2 = state.shoppingList.filter(i => i.checked).length;
+      return total2 > 0 ? estimatedTotal * (checked2 / total2) : 0;
+    })();
+    const stillNeeded = estimatedTotal - checkedCost;
+    html += `<div style="background:linear-gradient(135deg,#2e7d5e18,#2e7d5e08);border:1px solid #2e7d5e40;border-radius:12px;padding:14px 18px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+      <div>
+        <div style="font-size:0.78rem;color:var(--text-muted);margin-bottom:2px;text-transform:uppercase;letter-spacing:0.04em">Estimated Shop Total</div>
+        <div style="font-size:1.55rem;font-weight:700;color:#2e7d5e;line-height:1">£${estimatedTotal.toFixed(2)}</div>
+        <div style="font-size:0.73rem;color:var(--text-muted);margin-top:3px">Based on recipe ingredient costs · prices approx.</div>
+      </div>
+      ${checkedCost > 0 ? `<div style="text-align:right">
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:3px">Still to buy</div>
+        <div style="font-size:1.1rem;font-weight:600;color:var(--text)">£${stillNeeded.toFixed(2)}</div>
+        <div style="font-size:0.7rem;color:var(--success);margin-top:2px">✓ £${checkedCost.toFixed(2)} in trolley</div>
+      </div>` : `<div style="font-size:0.82rem;color:var(--text-soft)">${remaining} item${remaining !== 1 ? 's' : ''} to buy</div>`}
+    </div>`;
+  }
 
   if (pantryDeducted > 0) {
     html += `<div style="background:#3d7a5210;border:1px solid #3d7a5233;border-radius:10px;padding:11px 15px;margin-bottom:18px;font-size:0.83rem;color:var(--success)">
@@ -7095,8 +7137,20 @@ async function _runCostUpdate(recipes, btn, skippedCount = 0) {
       }));
       const raw = await callClaude(
         'You are a UK grocery pricing assistant. Respond ONLY with valid JSON — no markdown, no explanation.',
-        `Price each ingredient for the quantity used in GBP. Use plain decimal numbers only, no currency symbols.
-Return ONLY this JSON structure, nothing else:
+        `You are pricing ingredients as bought from UK supermarkets (Tesco/Sainsbury's/Asda) in 2024-2025. Use realistic retail prices. Cost = actual quantity used, pro-rated from the typical pack sold.
+
+Reference UK supermarket prices:
+MEAT & FISH: chicken breast 500g=£3.80, beef mince 500g=£3.50, salmon fillet 2-pack=£4.80, pork chops 500g=£3.80, bacon 200g=£2.40, sausages 8-pack=£2.80, prawns 200g=£4.00, cod fillet 2-pack=£4.50
+DAIRY: eggs 6-pack=£1.80 (£0.30 each), milk 2l=£1.40 (£0.07/100ml), double cream 300ml=£1.70, butter 250g=£2.10, cheddar 400g=£3.50 (£0.88/100g), parmesan 100g=£2.50, Greek yoghurt 500g=£1.80, mozzarella 125g=£1.10, creme fraiche 300ml=£1.60
+VEG: onion each=£0.18, garlic clove=£0.06, potatoes 1kg=£1.00, carrots 1kg=£0.90, tomatoes 6-pack=£1.40 (£0.25 each), cherry tomatoes 300g=£1.40, peppers each=£0.55, courgette each=£0.65, spinach 200g=£1.20, mushrooms 400g=£1.50, broccoli each=£0.85, lemon each=£0.28, lime each=£0.22, ginger 100g=£0.80, chilli each=£0.20, celery each=£0.70, leek each=£0.55, sweet potato each=£0.60
+TINS & STORE CUPBOARD: tinned tomatoes 400g=£0.65, chickpeas 400g=£0.70, kidney/cannellini beans 400g=£0.70, coconut milk 400ml=£1.10, lentils 500g=£1.20, pasta 500g=£1.00, rice 1kg=£1.40, noodles 300g=£1.20, plain flour 1.5kg=£1.25, bread 800g=£1.30, stock cube=£0.20
+OILS & CONDIMENTS (charge exact amount used): olive oil per tbsp=£0.06, vegetable oil per tbsp=£0.03, soy sauce per tbsp=£0.12, fish sauce per tbsp=£0.10, worcestershire sauce per tbsp=£0.08, tomato puree per tbsp=£0.12, tahini per tbsp=£0.20, honey per tbsp=£0.18, dried herb/spice per tsp=£0.08, fresh herb pack=£0.80, cream cheese 200g=£1.40
+
+Pro-rating rule: if recipe uses 200g from a 500g (£3.80) pack, cost = (200/500) x 3.80 = £1.52
+For spices, oils used in small amounts, charge only the small amount (e.g. 1 tsp olive oil = £0.03).
+Return plain decimal GBP numbers only, no pound signs.
+
+Return ONLY this JSON, nothing else:
 [{"id":"recipe_id","ingredients":[{"name":"ingredient name","cost":0.45}]}]
 Recipes: ${JSON.stringify(recipeList)}`
       );
